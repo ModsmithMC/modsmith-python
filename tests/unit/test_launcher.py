@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 
@@ -36,6 +37,12 @@ def client(tmp_path):
 def test_requires_launcher_to_have_run(client):
     with pytest.raises(LauncherError):
         client.profile_files()
+
+
+def test_add_profile_stores_an_absolute_game_directory(client, tmp_path):
+    write_profiles(tmp_path)
+    key = client.add_profile("Pack", "1.21", "instances/pack")
+    assert Path(client.profiles()[key].game_dir).is_absolute()
 
 
 def test_add_profile_preserves_other_data_and_backs_up(client, tmp_path):

@@ -62,7 +62,7 @@ class GameDir:
     """A `.minecraft` directory and the layout of the files inside it."""
 
     def __init__(self, path: Path | str) -> None:
-        self.path = Path(path)
+        self.path = Path(path).resolve()
 
     @classmethod
     def default(cls) -> "GameDir":

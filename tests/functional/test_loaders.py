@@ -1,12 +1,13 @@
 """Install loaders from a local Maven repository using real processors."""
 
 import json
+from pathlib import Path
 
 import pytest
 
 from modsmith.errors import LoaderError, ProcessorError
 from modsmith.loaders import Fabric, Forge, Quilt
-from modsmith.minecraft import maven_path
+from modsmith.minecraft import GameDir, maven_path
 from tests.lib.builders import jdk_home, link_directory, sha1, write_zip
 from tests.lib.server import Reply
 
@@ -162,6 +163,22 @@ def test_forge_install_end_to_end(
     assert game.version(VERSION_ID).inherits_from == "1.16.5"
     assert loader.is_installed(game, session=session, cache_dir=cache)
     assert server.hits("/java-index") == []
+
+
+def test_relative_paths_work_in_the_processor_directory(
+    server, session, game, tmp_path, processor_jars, java, monkeypatch
+):
+    loader = publish_forge(server, tmp_path, processor_jars)
+    publish_vanilla(server, game)
+    monkeypatch.chdir(tmp_path)
+
+    relative = GameDir(game.path.name)
+    version_id = loader.install(
+        relative, java=java, cache_dir=Path("cache"), session=session
+    )
+
+    assert relative.library("demo:patched:1").read_bytes() == PATCH_DATA
+    assert relative.has_version(version_id)
 
 
 def test_second_install_does_nothing(

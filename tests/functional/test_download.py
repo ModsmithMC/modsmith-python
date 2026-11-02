@@ -33,6 +33,14 @@ def test_reports_files_when_sizes_are_unknown(server, session, tmp_path):
     assert events == [ms.Progress("download", 1, 1, "file")]
 
 
+def test_downloads_an_empty_file(server, session, tmp_path):
+    url = server.add_body("/file", b"")
+    dest = tmp_path / "f"
+    download(Resource.of(url, dest, {"sha1": sha1(b"")}, 0), session=session)
+    assert dest.read_bytes() == b""
+    assert not part_of(dest).exists()
+
+
 def test_skips_valid_file(server, session, tmp_path):
     url = server.add_body("/file", b"new")
     dest = tmp_path / "f"

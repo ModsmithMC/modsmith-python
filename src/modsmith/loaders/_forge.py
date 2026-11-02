@@ -67,6 +67,8 @@ class ProcessorLoader(Loader):
         progress: ProgressCallback | None = None,
         cancel: CancelToken | None = None,
     ) -> str:
+        if cache_dir is not None:
+            cache_dir = Path(cache_dir).resolve()  # processors run in another directory
         with session_scope(session) as client:
             installer = self.fetch_installer(session=client, cache_dir=cache_dir)
             if game.has_version(installer.version_id):

@@ -14,6 +14,10 @@ def test_layout(tmp_path):
     assert game.library("a:b:1") == tmp_path / "libraries" / "a" / "b" / "1" / "b-1.jar"
 
 
+def test_relative_path_is_made_absolute():
+    assert GameDir("minecraft").path.is_absolute()
+
+
 def test_lists_only_real_versions(tmp_path):
     game = GameDir(tmp_path)
     assert game.installed_versions() == []

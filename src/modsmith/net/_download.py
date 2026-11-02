@@ -34,6 +34,7 @@ def _stream(
 ) -> None:
     offset = part.stat().st_size if part.exists() else 0
     if resource.size is not None and offset >= resource.size:
+        part.touch()  # an empty file has nothing to stream
         return
     headers = {"Range": f"bytes={offset}-"} if offset else {}
     with session.stream(url, headers) as response:

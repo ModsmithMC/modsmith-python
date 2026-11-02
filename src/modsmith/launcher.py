@@ -143,7 +143,7 @@ class Launcher:
         values: dict[str, Any] = {
             "name": name,
             "type": "custom",
-            "gameDir": str(game_dir),
+            "gameDir": str(Path(game_dir).resolve()),
             "lastVersionId": version_id,
             "lastUsed": now,
         }
