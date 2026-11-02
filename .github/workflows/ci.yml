@@ -17,4 +17,5 @@ jobs:
       - uses: astral-sh/setup-uv@v6
       - run: uv sync
       - run: uv run ruff check .
-      - run: uv run pytest
+      - run: uv run pyright
+      - run: uv run pytest --cov --cov-fail-under=85

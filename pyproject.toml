@@ -1,20 +1,32 @@
 [project]
-name = "cursecraft"
+name = "modsmith"
 version = "0.1.0"
-description = "A lightweight modpack installer for the official Minecraft launcher."
+description = "A Python toolkit for Minecraft modpacks, mod loaders and game instances."
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.12"
+keywords = ["minecraft", "modpack", "modrinth", "curseforge", "forge", "fabric"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+    "Typing :: Typed",
+]
 dependencies = [
     "platformdirs>=4.3",
+    "pydantic>=2.9",
     "requests>=2.34.2",
 ]
 
 [dependency-groups]
 dev = [
+    "pyright>=1.1.390",
     "pytest>=8.3",
+    "pytest-cov>=6.0",
     "responses>=0.25",
     "ruff>=0.8",
+    "types-requests>=2.32",
 ]
 
 [build-system]
@@ -22,20 +34,31 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/cursecraft"]
+packages = ["src/modsmith"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q"
+pythonpath = ["tests"]
+addopts = "-q -m 'not network'"
+markers = ["network: talks to real servers"]
 
 [tool.ruff]
 line-length = 88
 target-version = "py312"
 src = ["src", "tests"]
 
-[tool.ruff.lint.isort]
-known-first-party = ["cursecraft", "conftest"]
-
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["modsmith", "helpers"]
+
+[tool.pyright]
+include = ["src"]
+typeCheckingMode = "strict"
+pythonVersion = "3.12"
+
+[tool.coverage.run]
+source = ["modsmith"]
+branch = true
