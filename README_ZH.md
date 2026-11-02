@@ -28,34 +28,34 @@ Modsmith 是一个库，不是启动器。它的小模块既能配合使用，�
   <tr>
     <td width="33%" valign="top">
       <img src="docs/assets/pixel/search.svg" alt="" width="24" height="24">
-      <h4>一套 API，两个平台</h4>
+      <p><strong>一套 API，两个平台</strong></p>
       用同样的方式搜索和下载 Modrinth、CurseForge 上的内容。
     </td>
     <td width="33%" valign="top">
       <img src="docs/assets/pixel/package.svg" alt="" width="24" height="24">
-      <h4>离线读取整合包</h4>
+      <p><strong>离线读取整合包</strong></p>
       没有网络也能打开 Modrinth 和 CurseForge 整合包。
     </td>
     <td width="33%" valign="top">
       <img src="docs/assets/pixel/layers.svg" alt="" width="24" height="24">
-      <h4>四种模组加载器</h4>
+      <p><strong>四种模组加载器</strong></p>
       一次调用即可安装 Forge、NeoForge、Fabric 和 Quilt。
     </td>
   </tr>
   <tr>
     <td valign="top">
       <img src="docs/assets/pixel/refresh.svg" alt="" width="24" height="24">
-      <h4>安全更新</h4>
+      <p><strong>安全更新</strong></p>
       更新整合包时，保留玩家自己做的修改。
     </td>
     <td valign="top">
       <img src="docs/assets/pixel/cup.svg" alt="" width="24" height="24">
-      <h4>匹配的 Java</h4>
+      <p><strong>匹配的 Java</strong></p>
       找到游戏版本需要的 Java，也可以直接下载。
     </td>
     <td valign="top">
       <img src="docs/assets/pixel/shield.svg" alt="" width="24" height="24">
-      <h4>可靠下载</h4>
+      <p><strong>可靠下载</strong></p>
       文件都会经过校验，下载中断后可以继续。
     </td>
   </tr>
