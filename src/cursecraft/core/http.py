@@ -4,7 +4,7 @@ from typing import Any
 
 import requests
 
-from .. import __version__
+from .._version import __version__
 from .errors import HttpError
 
 USER_AGENT = f"CurseCraft/{__version__} (https://github.com/PaPa-jun/CurseCraft)"

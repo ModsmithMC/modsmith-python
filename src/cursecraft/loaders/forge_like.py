@@ -98,9 +98,10 @@ class ForgeLikeInstaller:
             if ctx.java.find(component):
                 raise failure
             try:
-                attempt(ctx.java.download(component, emit))
+                java = ctx.java.download(component, emit)
             except JavaNotFoundError as e:
-                raise failure or e
+                raise (failure or e) from e
+            attempt(java)
 
 
 class ForgeInstaller(ForgeLikeInstaller):
