@@ -3,6 +3,7 @@
 import logging
 import tempfile
 from abc import abstractmethod
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar
@@ -113,9 +114,9 @@ class ProcessorLoader(Loader):
 
         Args:
             game: The game directory.
-            java: The Java binary to use. By default, a matching official runtime
-                is used, then another installed runtime, then a download from
-                Mojang.
+            java: The Java binary to use. By default, installed runtimes are tried
+                first, then runtimes downloaded from Mojang. ``jre-legacy`` is
+                the last choice.
             cache_dir: The cache directory. Defaults to the per-user cache.
             session: The session to use. A temporary one is created if omitted.
             progress: Receives updates for each stage.
@@ -179,11 +180,7 @@ class ProcessorLoader(Loader):
         progress: ProgressCallback | None,
         cancel: CancelToken | None,
     ) -> None:
-        """Run the client processors, choosing a Java runtime if none was given.
-
-        A failure on the exact runtime is final. Otherwise, each installed runtime is
-        tried, and Mojang's is downloaded as a last resort.
-        """
+        """Run the client processors, trying Java runtimes until one works."""
         processors = installer.profile.client_processors()
         if not processors:
             return
@@ -210,23 +207,46 @@ class ProcessorLoader(Loader):
                 attempt(java)
                 return
 
-            component = java_runtime.required_for(game.version(self.minecraft), game)
-            exact = java_runtime.find(component, game=game, cache_dir=cache_dir)
-            candidates = (
-                [exact]
-                if exact
-                else java_runtime.find_all(game=game, cache_dir=cache_dir)
-            )
             failure: ProcessorError | None = None
-            for runtime in candidates:
+            runtimes = self._runtimes(game, cache_dir, session, progress, cancel)
+            for runtime in runtimes:
                 try:
                     attempt(runtime.executable)
                     return
                 except ProcessorError as e:
                     failure = e
                     logger.warning("Processors failed on %s: %s", runtime.component, e)
-            if exact and failure:
-                raise failure
+            raise failure or JavaError(f"No usable Java runtime for {self.minecraft}")
+
+    def _runtimes(
+        self,
+        game: GameDir,
+        cache_dir: Path | None,
+        session: Session,
+        progress: ProgressCallback | None,
+        cancel: CancelToken | None,
+    ) -> Iterator[java_runtime.JavaRuntime]:
+        """Yield Java runtimes to try, installed ones first and downloads after.
+
+        Processors are install tools, so they do not need the Java that the game
+        runs on. ``jre-legacy`` is the last choice, because Mojang's Windows build
+        breaks some installs and there is no build for Apple Silicon.
+        """
+        required = java_runtime.required_for(game.version(self.minecraft), game)
+        legacy = required == java_runtime.LEGACY_COMPONENT
+        exact = java_runtime.find(required, game=game, cache_dir=cache_dir)
+        installed = java_runtime.find_all(game=game, cache_dir=cache_dir)
+        tried: set[str] = set()
+        for runtime in [*([] if legacy or exact is None else [exact]), *installed]:
+            if runtime.component not in tried:
+                tried.add(runtime.component)
+                yield runtime
+
+        fallback = java_runtime.FALLBACK_COMPONENT
+        for component in [fallback, required] if legacy else [required, fallback]:
+            if component in tried:
+                continue
+            tried.add(component)
             try:
                 runtime = java_runtime.download(
                     component,
@@ -237,8 +257,9 @@ class ProcessorLoader(Loader):
                     index_url=self.java_index_url,
                 )
             except JavaError as e:
-                raise (failure or e) from e
-            attempt(runtime.executable)
+                logger.warning("Cannot use %s: %s", component, e)
+                continue
+            yield runtime
 
 
 @register

@@ -5,7 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from modsmith.errors import LoaderError, ProcessorError
+from modsmith.errors import JavaError, LoaderError, ProcessorError
+from modsmith.java import platform_key
 from modsmith.loaders import Fabric, Forge, Quilt
 from modsmith.minecraft import GameDir, maven_path
 from tests.lib.builders import jdk_home, link_directory, sha1, write_zip
@@ -111,18 +112,36 @@ def publish_forge(server, tmp_path, processor_jars, *, minecraft="1.16.5"):
     return loader
 
 
-def publish_vanilla(server, game):
+def publish_vanilla(server, game, component="java-runtime-delta"):
     jar_url = server.add_body("/client.jar", b"client")
     game.write_version(
         "1.16.5",
         {
             "id": "1.16.5",
-            "javaVersion": {"component": "java-runtime-delta"},
+            "javaVersion": {"component": component} if component else None,
             "downloads": {
                 "client": {"url": jar_url, "sha1": sha1(b"client"), "size": 6}
             },
         },
     )
+
+
+def publish_runtimes(server, *components):
+    """Publish runtimes whose java binary cannot run, to observe the search."""
+    data = b"not a program"
+    binary = server.add_body("/java.exe", data)
+    file = {"type": "file", "downloads": {"raw": {"url": binary, "sha1": sha1(data)}}}
+    builds = {}
+    for component in components:
+        manifest = {"files": {"bin/java.exe": file}}
+        url = server.add_json(f"/{component}.json", manifest)
+        builds[component] = [{"manifest": {"url": url}}]
+    server.add_json("/java-index", {platform_key(): builds})
+
+
+def manifests_read(server):
+    paths = [request.path for request in server.requests]
+    return [path[1:-5] for path in paths if path.endswith(".json")]
 
 
 def link_real_runtime(game, java, component):
@@ -226,15 +245,68 @@ def test_failed_patch_does_not_register_version(
     assert not game.has_version(VERSION_ID)
 
 
-def test_exact_runtime_failure_does_not_download(
-    server, session, game, tmp_path, processor_jars, cache
+def test_failed_runtime_moves_on_to_the_next(
+    server, session, game, tmp_path, processor_jars, java, cache
 ):
     loader = publish_forge(server, tmp_path, processor_jars)
     publish_vanilla(server, game)
     broken_runtime(game, "java-runtime-delta")
+    link_real_runtime(game, java, "java-runtime-gamma")
+    assert loader.install(game, cache_dir=cache, session=session) == VERSION_ID
+    assert server.hits("/java-index") == []
+
+
+def test_installed_legacy_runtime_is_the_last_choice(
+    server, session, game, tmp_path, processor_jars, java, cache, caplog
+):
+    loader = publish_forge(server, tmp_path, processor_jars)
+    publish_vanilla(server, game, component=None)
+    broken_runtime(game, "jre-legacy")
+    link_real_runtime(game, java, "java-runtime-gamma")
+    assert loader.install(game, cache_dir=cache, session=session) == VERSION_ID
+    assert "jre-legacy" not in caplog.text
+
+
+def test_platform_without_legacy_runtime_downloads_the_fallback(
+    server, session, game, tmp_path, processor_jars, cache
+):
+    loader = publish_forge(server, tmp_path, processor_jars)
+    publish_vanilla(server, game, component=None)
+    publish_runtimes(server, "java-runtime-delta")
     with pytest.raises(ProcessorError):
         loader.install(game, cache_dir=cache, session=session)
-    assert server.hits("/java-index") == []
+    assert manifests_read(server) == ["java-runtime-delta"]
+
+
+def test_legacy_runtime_is_downloaded_last(
+    server, session, game, tmp_path, processor_jars, cache
+):
+    loader = publish_forge(server, tmp_path, processor_jars)
+    publish_vanilla(server, game, component=None)
+    publish_runtimes(server, "java-runtime-delta", "jre-legacy")
+    with pytest.raises(ProcessorError):
+        loader.install(game, cache_dir=cache, session=session)
+    assert manifests_read(server) == ["java-runtime-delta", "jre-legacy"]
+
+
+def test_required_runtime_is_downloaded_before_the_fallback(
+    server, session, game, tmp_path, processor_jars, cache
+):
+    loader = publish_forge(server, tmp_path, processor_jars)
+    publish_vanilla(server, game, component="java-runtime-epsilon")
+    publish_runtimes(server, "java-runtime-delta", "java-runtime-epsilon")
+    with pytest.raises(ProcessorError):
+        loader.install(game, cache_dir=cache, session=session)
+    assert manifests_read(server) == ["java-runtime-epsilon", "java-runtime-delta"]
+
+
+def test_no_available_runtime_is_a_java_error(
+    server, session, game, tmp_path, processor_jars, cache
+):
+    loader = publish_forge(server, tmp_path, processor_jars)
+    publish_vanilla(server, game)
+    with pytest.raises(JavaError):
+        loader.install(game, cache_dir=cache, session=session)
 
 
 def test_other_official_runtime_avoids_a_download(

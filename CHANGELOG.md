@@ -23,6 +23,8 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `Instance` remembers file hashes, so a sync with nothing to do is faster.
 - `Loader.is_installed` works offline for the built-in loaders.
 - Download progress counts skipped and resumed files, and reaches the total.
+- Forge and NeoForge installs prefer newer Java runtimes, which fixes old
+  versions on Windows and Apple Silicon.
 - Requests respect `Retry-After`, and downloads use `If-Range` to resume.
 
 ### Changed

@@ -30,6 +30,8 @@ __all__ = [
 RUNTIME_INDEX_URL = "https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json"
 STORE_PACKAGE = "Microsoft.4297127D64EC6_8wekyb3d8bbwe"
 LEGACY_COMPONENT = "jre-legacy"
+# Available on every platform Mojang supports, including Apple Silicon.
+FALLBACK_COMPONENT = "java-runtime-delta"
 # Written last, so an interrupted download is never treated as installed.
 COMPLETE_MARKER = ".modsmith-complete"
 JAVA_BINARIES = ("bin/java.exe", "bin/java", "jre.bundle/Contents/Home/bin/java")
