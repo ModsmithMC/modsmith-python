@@ -3,3 +3,6 @@ inherit = "basic"
 stylesheets = ["modsmith.css"]
 sidebars = []
 pygments_style = { default = "default" }
+
+[options]
+base_url = ""

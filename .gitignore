@@ -31,3 +31,4 @@ Thumbs.db
 
 # Documentation
 docs/_build/
+docs/reference/*/

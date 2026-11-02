@@ -1,0 +1,76 @@
+# Install a mod loader
+
+You usually get a loader from a pack:
+
+```python
+import modsmith as ms
+
+game = ms.minecraft.GameDir.default()
+pack = ms.packs.load("pack.mrpack")
+
+version_id = pack.loader.install(game)
+```
+
+You can also install one directly. The version comes first, then the Minecraft version:
+
+```python
+fabric = ms.loaders.Fabric("0.16.10", "1.21.1")
+neoforge = ms.loaders.NeoForge("21.1.233", "1.21.1")
+forge = ms.loaders.Forge("47.3.0", "1.20.1")
+quilt = ms.loaders.Quilt("0.30.2", "1.21.1")
+
+version_id = fabric.install(game)
+```
+
+`install` downloads Minecraft if needed, then the loader. It returns the version id to use in a launcher profile.
+
+## Build a loader from its name
+
+This helps when a name comes from a file or a user:
+
+```python
+loader = ms.loaders.create("fabric", "0.16.10", "1.21.1")
+loader = ms.loaders.parse("forge-47.3.0", "1.20.1")
+```
+
+## Check what is installed
+
+```python
+if fabric.is_installed(game):
+    print(fabric.expected_id())
+```
+
+`is_installed` reads local files, so it works offline. Installing a loader that is already there also returns straight away.
+
+## Choose a game directory
+
+`GameDir.default` finds the official launcher's folder. To install somewhere else, give it a path:
+
+```python
+game = ms.minecraft.GameDir("my-launcher/minecraft")
+```
+
+Vanilla versions work the same way:
+
+```python
+for version in ms.minecraft.list_versions()[:5]:
+    print(version.id, version.type)
+
+ms.minecraft.install_version(game, "1.21.1")
+```
+
+## Forge and NeoForge take longer
+
+Fabric and Quilt only download files. Forge and NeoForge also patch the game, which needs Java and can take a few minutes. Modsmith picks a Java runtime for you, and you can pass your own with `java=`:
+
+```python
+from pathlib import Path
+
+forge.install(game, java=Path("/usr/lib/jvm/java-21/bin/java"))
+```
+
+[How loaders are installed](../concepts/loaders.md) explains why. Installers are cached, and you can move that cache with `cache_dir=`.
+
+## Supported versions
+
+See [Compatibility](../help/compatibility.md).

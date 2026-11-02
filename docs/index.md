@@ -2,12 +2,15 @@
 
 ```{raw} html
 <div class="hero">
-  <img src="_static/hero.svg" alt="">
+  <picture>
+    <source media="(max-width: 560px)" srcset="_static/hero-small.svg">
+    <img src="_static/hero.svg" alt="">
+  </picture>
   <div class="hero-copy">
     <h2>Build your own modpack tools</h2>
     <p>A Python toolkit for Minecraft modpacks, mod loaders and game instances. It works alongside the official launcher.</p>
     <div class="actions">
-      <a class="button primary" href="api/index.html">Get started</a>
+      <a class="button primary" href="get-started/installation/">Get started</a>
       <a class="button" href="https://github.com/PaPa-jun/ModSmith">View on GitHub</a>
     </div>
   </div>
@@ -131,7 +134,7 @@ launcher.add_profile(pack.name, version_id, instance.path)
     <h2>Start building</h2>
     <p class="lede">Modsmith needs Python 3.12 or newer.</p>
     <div class="actions">
-      <a class="button primary" href="api/index.html">Get started</a>
+      <a class="button primary" href="get-started/installation/">Get started</a>
     </div>
   </div>
 </div>
@@ -139,6 +142,35 @@ launcher.add_profile(pack.name, version_id, instance.path)
 
 ```{toctree}
 :hidden:
+:caption: Get started
 
-api/index
+get-started/index
+```
+
+```{toctree}
+:hidden:
+:caption: Guides
+
+guides/index
+```
+
+```{toctree}
+:hidden:
+:caption: Concepts
+
+concepts/index
+```
+
+```{toctree}
+:hidden:
+:caption: Reference
+
+reference/index
+```
+
+```{toctree}
+:hidden:
+:caption: Help
+
+help/index
 ```

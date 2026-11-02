@@ -84,7 +84,7 @@ The site is built with Sphinx and MyST, and the API reference comes from the
 docstrings. Warnings and broken references fail the build:
 
 ```bash
-uv run sphinx-build -W -n -b html docs docs/_build/html
+uv run sphinx-build -W -n -b dirhtml docs docs/_build/html
 ```
 
 Examples in docstrings run as tests:
