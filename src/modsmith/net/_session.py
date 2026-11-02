@@ -1,5 +1,7 @@
 import threading
 import time
+from collections.abc import Generator
+from contextlib import contextmanager
 from importlib.metadata import PackageNotFoundError, version
 from types import TracebackType
 from typing import Any, Self
@@ -27,6 +29,15 @@ def is_retryable(error: Exception) -> bool:
     if isinstance(error, NetworkError):
         return error.status is None or error.status in RETRY_STATUS
     return isinstance(error, TRANSIENT_ERRORS)
+
+
+@contextmanager
+def session_scope(session: "Session | None") -> Generator["Session"]:
+    if session is not None:
+        yield session
+        return
+    with Session() as owned:
+        yield owned
 
 
 class Session:

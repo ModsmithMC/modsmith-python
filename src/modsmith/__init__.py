@@ -2,7 +2,7 @@
 
 import logging
 
-from . import errors, net, progress
+from . import errors, java, launcher, minecraft, net, progress
 from .net._session import __version__
 from .progress import CancelToken, Progress
 
@@ -13,6 +13,9 @@ __all__ = [
     "Progress",
     "__version__",
     "errors",
+    "java",
+    "launcher",
+    "minecraft",
     "net",
     "progress",
 ]
