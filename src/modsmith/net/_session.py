@@ -17,7 +17,7 @@ try:
 except PackageNotFoundError:
     __version__ = "0.0.0"
 
-DEFAULT_USER_AGENT = f"modsmith/{__version__} (https://github.com/PaPa-jun/CurseCraft)"
+DEFAULT_USER_AGENT = f"modsmith/{__version__} (https://github.com/PaPa-jun/ModSmith)"
 DEFAULT_TIMEOUT = (10.0, 60.0)
 MAX_RETRY_AFTER = 60.0
 RETRY_STATUS = frozenset({429, 500, 502, 503, 504})
