@@ -32,8 +32,8 @@ ms.launcher.Launcher(game).add_profile(pack.name, version_id, instance.path)
 Each module also works alone:
 
 ```python
-pack = ms.packs.load("pack.mrpack")                       # no network, no API key
-ms.loaders.NeoForge("21.1.233", "1.21.1").install(game)   # only a mod loader
+pack = ms.packs.load("pack.mrpack")  # no network, no API key
+ms.loaders.NeoForge("21.1.233", "1.21.1").install(game)  # only a mod loader
 ```
 
 ## Modules
@@ -53,18 +53,7 @@ Long-running calls accept `progress=` and `cancel=`. Errors derive from `modsmit
 
 ## Development
 
-```bash
-uv sync
-uv run pytest
-uv run ruff check .
-uv run pyright
-```
-
-Tests against real servers are opt-in:
-
-```bash
-uv run pytest tests/integration -o addopts="" -m network
-```
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, checks and how the tests are organised.
 
 ## License
 

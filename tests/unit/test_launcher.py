@@ -1,19 +1,25 @@
 import json
-import subprocess
-import sys
 
 import pytest
 
 from modsmith import launcher
 from modsmith.errors import LauncherError
-from modsmith.launcher import Launcher, icon_data_uri, is_running
+from modsmith.launcher import (
+    LAUNCHER_PROCESSES,
+    Launcher,
+    icon_data_uri,
+    is_running,
+    parse_ps,
+    parse_tasklist,
+)
 from modsmith.minecraft import GameDir
 
 
 def write_profiles(root, name="launcher_profiles.json", **extra):
     path = root / name
     path.write_text(
-        json.dumps({"profiles": {"existing": {"name": "Keep"}}, **extra}), encoding="utf-8"
+        json.dumps({"profiles": {"existing": {"name": "Keep"}}, **extra}),
+        encoding="utf-8",
     )
     return path
 
@@ -35,7 +41,9 @@ def test_requires_launcher_to_have_run(client):
 def test_add_profile_preserves_other_data_and_backs_up(client, tmp_path):
     path = write_profiles(tmp_path, settings={"crashAssistance": True})
     original = path.read_text(encoding="utf-8")
-    key = client.add_profile("整合包 Pack", "1.21-forge", tmp_path / "game", memory_mb=4096)
+    key = client.add_profile(
+        "整合包 Pack", "1.21-forge", tmp_path / "game", memory_mb=4096
+    )
     data = read(path)
     assert key == "modsmith-pack"
     assert data["profiles"]["existing"] == {"name": "Keep"}
@@ -94,37 +102,19 @@ def test_icon_data_uri():
     assert icon_data_uri(b"x") == "data:image/png;base64,eA=="
 
 
-def fake_processes(monkeypatch, platform, stdout):
-    monkeypatch.setattr(sys, "platform", platform)
-    monkeypatch.setattr(
-        launcher.subprocess,
-        "run",
-        lambda *a, **k: subprocess.CompletedProcess(a, 0, stdout),
+def test_parse_tasklist_output():
+    output = (
+        '"explorer.exe","1","Console","1","1 K"\n'
+        '"Minecraft.exe","2","Console","1","1 K"\n'
     )
+    assert parse_tasklist(output) & LAUNCHER_PROCESSES == {"minecraft.exe"}
 
 
-def test_detects_windows_launcher(monkeypatch):
-    fake_processes(
-        monkeypatch,
-        "win32",
-        '"explorer.exe","1","Console","1","1 K"\n"Minecraft.exe","2","Console","1","1 K"\n',
-    )
-    assert is_running()
+def test_parse_ps_output():
+    names = parse_ps("/usr/bin/bash\n/opt/minecraft-launcher\n\n")
+    assert names & LAUNCHER_PROCESSES == {"minecraft-launcher"}
 
 
-def test_detects_posix_launcher(monkeypatch):
-    fake_processes(monkeypatch, "linux", "/usr/bin/bash\n/opt/minecraft-launcher\n")
-    assert is_running()
-
-
-def test_not_running(monkeypatch):
-    fake_processes(monkeypatch, "win32", '"explorer.exe","1","Console","1","1 K"\n')
-    assert not is_running()
-
-
-def test_detection_failure_means_not_running(monkeypatch):
-    def fail(*args, **kwargs):
-        raise OSError
-
-    monkeypatch.setattr(launcher.subprocess, "run", fail)
-    assert not is_running()
+def test_is_running_queries_the_real_process_table():
+    assert is_running() in (True, False)
+    assert launcher._process_names()

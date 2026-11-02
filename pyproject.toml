@@ -3,14 +3,22 @@ name = "modsmith"
 version = "0.1.0"
 description = "A Python toolkit for Minecraft modpacks, mod loaders and game instances."
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
+authors = [{ name = "YufengPeng", email = "pengyufeng2003@outlook.com" }]
 keywords = ["minecraft", "modpack", "modrinth", "curseforge", "forge", "fabric"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Games/Entertainment",
+    "Topic :: Software Development :: Libraries :: Python Modules",
     "Typing :: Typed",
 ]
 dependencies = [
@@ -19,14 +27,29 @@ dependencies = [
     "requests>=2.34.2",
 ]
 
+[project.urls]
+Homepage = "https://github.com/PaPa-jun/CurseCraft"
+Issues = "https://github.com/PaPa-jun/CurseCraft/issues"
+Changelog = "https://github.com/PaPa-jun/CurseCraft/blob/main/CHANGELOG.md"
+
 [dependency-groups]
-dev = [
-    "pyright>=1.1.390",
-    "pytest>=8.3",
+test = [
+    "pytest>=9.0",
     "pytest-cov>=6.0",
-    "responses>=0.25",
+    "pytest-socket>=0.7",
+]
+lint = [
+    "pre-commit>=4.0",
     "ruff>=0.8",
+]
+typing = [
+    "pyright>=1.1.390",
     "types-requests>=2.32",
+]
+dev = [
+    { include-group = "lint" },
+    { include-group = "test" },
+    { include-group = "typing" },
 ]
 
 [build-system]
@@ -37,28 +60,36 @@ build-backend = "hatchling.build"
 packages = ["src/modsmith"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["tests"]
-addopts = "-q -m 'not network'"
-markers = ["network: talks to real servers"]
+minversion = "9.0"
+strict = true
+testpaths = ["tests/unit", "tests/functional"]
+pythonpath = ["."]
+addopts = ["-ra", "--import-mode=importlib"]
+filterwarnings = ["error"]
+
+[tool.coverage.run]
+source_pkgs = ["modsmith"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+skip_covered = true
+exclude_also = ["if TYPE_CHECKING:"]
 
 [tool.ruff]
 line-length = 88
 target-version = "py312"
-src = ["src", "tests"]
+src = ["src", "."]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
+select = ["B", "C4", "E", "F", "I", "PT", "RUF", "SIM", "T20", "UP"]
 ignore = ["E501"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["modsmith", "helpers"]
+known-first-party = ["modsmith", "tests"]
 
 [tool.pyright]
 include = ["src"]
 typeCheckingMode = "strict"
 pythonVersion = "3.12"
-
-[tool.coverage.run]
-source = ["modsmith"]
-branch = true

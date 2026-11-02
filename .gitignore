@@ -1,23 +1,30 @@
-# Python-generated files
+# Python
 __pycache__/
-*.py[oc]
+*.py[cod]
+*.egg-info/
 build/
 dist/
 wheels/
-*.egg-info
 
-# Virtual environments
-.venv
+# Environments
+.venv/
+.env
 
-# DeBugging files
-*.log
-*.json
-!tests/fixtures/**/*.json
-.minecraft/*
-temp/*
-games/*
-
-# Mac files
-**/.DS_Store
-# Example caches
+# Tool caches
 .cache/
+.coverage
+.coverage.*
+.pyright/
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+
+# Editors and systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local game files and logs
+*.log
+.minecraft/

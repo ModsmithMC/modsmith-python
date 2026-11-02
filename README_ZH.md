@@ -32,8 +32,8 @@ ms.launcher.Launcher(game).add_profile(pack.name, version_id, instance.path)
 每个模块也可以单独使用：
 
 ```python
-pack = ms.packs.load("pack.mrpack")                       # 不需要网络和 API 密钥
-ms.loaders.NeoForge("21.1.233", "1.21.1").install(game)   # 只安装加载器
+pack = ms.packs.load("pack.mrpack")  # 不需要网络和 API 密钥
+ms.loaders.NeoForge("21.1.233", "1.21.1").install(game)  # 只安装加载器
 ```
 
 ## 模块
@@ -53,18 +53,7 @@ ms.loaders.NeoForge("21.1.233", "1.21.1").install(game)   # 只安装加载器
 
 ## 开发
 
-```bash
-uv sync
-uv run pytest
-uv run ruff check .
-uv run pyright
-```
-
-访问真实服务器的测试需要主动开启：
-
-```bash
-uv run pytest tests/integration -o addopts="" -m network
-```
+环境配置、检查命令和测试结构见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ## 许可证
 
