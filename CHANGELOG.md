@@ -16,7 +16,6 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `modsmith.instances`: `Instance.diff()` and `Instance.sync()` for installing
   and updating game directories while keeping user changes.
 - `modsmith.minecraft`, `modsmith.java`, `modsmith.launcher` and `modsmith.net`.
-
 - `Instance.sync` stages new files and rolls back if it cannot finish, so a
   failed update leaves the instance as it was.
 - `Platform.iter_releases` reads releases page by page, so finding the latest

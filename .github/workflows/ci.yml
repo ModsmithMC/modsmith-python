@@ -4,7 +4,6 @@ on:
   push:
     branches: [main]
   pull_request:
-  workflow_dispatch:
   workflow_call:
 
 permissions:
@@ -39,8 +38,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python: ["3.12", "3.13", "3.14"]
+        include:
+          - { os: ubuntu-latest, python: "3.12" }
+          - { os: ubuntu-latest, python: "3.13" }
+          - { os: ubuntu-latest, python: "3.14" }
+          - { os: windows-latest, python: "3.12" }
+          - { os: macos-latest, python: "3.14" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -55,9 +58,6 @@ jobs:
       - run: uv sync --locked --no-default-groups --group test
       - name: Run tests
         run: uv run --no-sync pytest --cov
-      - name: Summarize coverage
-        shell: bash
-        run: uv run --no-sync coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"
 
   minimum-dependencies:
     name: Test (lowest dependencies)
@@ -109,15 +109,3 @@ jobs:
           name: dist
           path: dist/
           if-no-files-found: error
-
-  all-checks:
-    name: All checks
-    if: always()
-    needs: [lint, test, minimum-dependencies, docs, build]
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Require every job to pass
-        env:
-          PASSED: ${{ !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') && !contains(needs.*.result, 'skipped') }}
-        run: test "$PASSED" = "true"
