@@ -6,7 +6,7 @@ dynamic = ["readme"]
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.12"
-authors = [{ name = "YufengPeng", email = "pengyufeng2003@outlook.com" }]
+authors = [{ name = "MeNeither", email = "pengyufeng2003@outlook.com" }]
 keywords = ["minecraft", "modpack", "modrinth", "curseforge", "forge", "fabric"]
 classifiers = [
     "Development Status :: 3 - Alpha",
