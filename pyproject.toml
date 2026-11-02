@@ -28,10 +28,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/PaPa-jun/ModSmith"
-Documentation = "https://papa-jun.github.io/ModSmith/"
-Issues = "https://github.com/PaPa-jun/ModSmith/issues"
-Changelog = "https://github.com/PaPa-jun/ModSmith/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/PaPa-jun/Modsmith"
+Documentation = "https://modsmith.meneither.site/"
+Issues = "https://github.com/PaPa-jun/Modsmith/issues"
+Changelog = "https://github.com/PaPa-jun/Modsmith/blob/main/CHANGELOG.md"
 
 [dependency-groups]
 test = [
@@ -74,15 +74,15 @@ path = "README.md"
 # PyPI cannot follow relative links or render Mermaid.
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
 pattern = 'src="(docs/[^"]+)"'
-replacement = 'src="https://raw.githubusercontent.com/PaPa-jun/ModSmith/main/\1"'
+replacement = 'src="https://raw.githubusercontent.com/PaPa-jun/Modsmith/main/\1"'
 
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
 pattern = 'href="(?!https?://)([^"]+)"'
-replacement = 'href="https://github.com/PaPa-jun/ModSmith/blob/main/\1"'
+replacement = 'href="https://github.com/PaPa-jun/Modsmith/blob/main/\1"'
 
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
 pattern = '\]\((?!https?://)([^)]+)\)'
-replacement = '](https://github.com/PaPa-jun/ModSmith/blob/main/\1)'
+replacement = '](https://github.com/PaPa-jun/Modsmith/blob/main/\1)'
 
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
 pattern = '```mermaid[\s\S]*?```\n\n'

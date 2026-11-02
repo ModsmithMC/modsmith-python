@@ -120,6 +120,7 @@
   }
 
   const repo = document.querySelector("[data-repo]");
+  const repoName = document.querySelector("[data-repo-name]");
   const facts = document.querySelector("[data-repo-facts]");
   const icons = {
     stars:
@@ -129,7 +130,8 @@
   };
   const compact = (count) =>
     new Intl.NumberFormat("en", { notation: "compact" }).format(count);
-  const show = ({ stars, forks }) => {
+  const show = ({ name, stars, forks }) => {
+    if (name) repoName.textContent = name;
     facts.innerHTML =
       `<span title="Stars">${icons.stars}${compact(stars)}</span>` +
       `<span title="Forks">${icons.forks}${compact(forks)}</span>`;
@@ -142,10 +144,14 @@
       const response = await fetch(`https://api.github.com/repos/${repo.dataset.repo}`);
       if (!response.ok) return;
       const data = await response.json();
-      const summary = { stars: data.stargazers_count, forks: data.forks_count };
+      const summary = {
+        name: data.full_name,
+        stars: data.stargazers_count,
+        forks: data.forks_count,
+      };
       sessionStorage.setItem(key, JSON.stringify(summary));
       show(summary);
     } catch (error) {}
   };
-  if (repo && facts) load();
+  if (repo && repoName && facts) load();
 })();

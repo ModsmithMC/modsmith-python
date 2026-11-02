@@ -6,3 +6,4 @@ pygments_style = { default = "default" }
 
 [options]
 base_url = ""
+repository = ""

@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/PaPa-jun/ModSmith/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/PaPa-jun/ModSmith/ci.yml?branch=main&style=flat-square&label=CI&logo=github" alt="CI"></a>
+  <a href="https://github.com/PaPa-jun/Modsmith/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/PaPa-jun/Modsmith/ci.yml?branch=main&style=flat-square&label=CI&logo=github" alt="CI"></a>
   <a href="https://pypi.org/project/modsmith/"><img src="https://img.shields.io/pypi/v/modsmith?style=flat-square&color=3c8527" alt="PyPI"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.12%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.12+"></a>
   <a href="https://microsoft.github.io/pyright/"><img src="https://img.shields.io/badge/types-pyright%20strict-2F74C0?style=flat-square" alt="Pyright strict"></a>
@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <a href="https://papa-jun.github.io/ModSmith/">文档</a> · <a href="README.md">English</a> · <strong>简体中文</strong>
+  <a href="https://modsmith.meneither.site/">文档</a> · <a href="README.md">English</a> · <strong>简体中文</strong>
 </p>
 
 ---

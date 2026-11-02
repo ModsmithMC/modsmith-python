@@ -11,7 +11,7 @@
     <p>A Python toolkit for Minecraft modpacks, mod loaders and game instances. It works alongside the official launcher.</p>
     <div class="actions">
       <a class="button primary" href="get-started/installation/">Get started</a>
-      <a class="button" href="https://github.com/PaPa-jun/ModSmith">View on GitHub</a>
+      <a class="button" href="https://github.com/PaPa-jun/Modsmith">View on GitHub</a>
     </div>
   </div>
 </div>
