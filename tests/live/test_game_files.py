@@ -5,15 +5,22 @@ import pytest
 import modsmith as ms
 
 FORGE_LIKE = [
+    ms.loaders.Forge("25.0.223", "1.13.2"),
     ms.loaders.Forge("36.2.42", "1.16.5"),
     ms.loaders.Forge("47.3.0", "1.20.1"),
     ms.loaders.Forge("52.0.40", "1.21.1"),
+    ms.loaders.Forge("66.1.0", "26.3"),
     ms.loaders.NeoForge("47.1.106", "1.20.1"),
     ms.loaders.NeoForge("21.1.233", "1.21.1"),
+    ms.loaders.NeoForge("26.3.0.101", "26.3"),
 ]
 META = [
+    ms.loaders.Fabric("0.20.1", "1.14"),
     ms.loaders.Fabric("0.16.10", "1.21.1"),
+    ms.loaders.Fabric("0.20.1", "26.3"),
+    ms.loaders.Quilt("0.30.2", "1.14.4"),
     ms.loaders.Quilt("0.30.2", "1.21.1"),
+    ms.loaders.Quilt("0.30.2", "26.3"),
 ]
 
 
