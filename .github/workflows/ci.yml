@@ -75,6 +75,21 @@ jobs:
       - name: Run tests
         run: uv run --isolated --resolution lowest-direct --group test pytest
 
+  docs:
+    name: Build documentation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - run: uv sync --locked --no-default-groups --group docs
+      - name: Build the site
+        run: uv run --no-sync sphinx-build -W -n -b html docs docs/_build/html
+      - name: Run the examples
+        run: uv run --no-sync sphinx-build -W -b doctest docs docs/_build/doctest
+
   build:
     name: Build distributions
     runs-on: ubuntu-latest
@@ -98,7 +113,7 @@ jobs:
   all-checks:
     name: All checks
     if: always()
-    needs: [lint, test, minimum-dependencies, build]
+    needs: [lint, test, minimum-dependencies, docs, build]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

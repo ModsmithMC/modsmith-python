@@ -78,11 +78,26 @@ Ruff checks that they exist, so also check that they match what the code does.
   documentation, and double backticks for parameters and literal values.
 - Use a code comment only to explain why something is done.
 
+## Documentation
+
+The site is built with Sphinx and MyST, and the API reference comes from the
+docstrings. Warnings and broken references fail the build:
+
+```bash
+uv run sphinx-build -W -n -b html docs docs/_build/html
+```
+
+Examples in docstrings run as tests:
+
+```bash
+uv run sphinx-build -W -b doctest docs docs/_build/doctest
+```
+
 ## Continuous integration
 
 | Workflow | Runs | Does |
 | :--- | :--- | :--- |
-| `ci.yml` | Pull requests and pushes to `main` | Lint, type checks, tests on every OS and Python version, lowest dependencies, package build |
+| `ci.yml` | Pull requests and pushes to `main` | Lint, type checks, tests on every OS and Python version, lowest dependencies, documentation, package build |
 | `live.yml` | Every Monday, or by hand | Runs `tests/live` on every OS |
 | `release.yml` | `v*` tags | Runs CI, publishes to PyPI and creates a GitHub release |
 

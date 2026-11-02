@@ -28,9 +28,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/PaPa-jun/CurseCraft"
-Issues = "https://github.com/PaPa-jun/CurseCraft/issues"
-Changelog = "https://github.com/PaPa-jun/CurseCraft/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/PaPa-jun/ModSmith"
+Issues = "https://github.com/PaPa-jun/ModSmith/issues"
+Changelog = "https://github.com/PaPa-jun/ModSmith/blob/main/CHANGELOG.md"
 
 [dependency-groups]
 test = [
@@ -47,9 +47,14 @@ typing = [
     "types-requests>=2.32",
 ]
 dev = [
+    { include-group = "docs" },
     { include-group = "lint" },
     { include-group = "test" },
     { include-group = "typing" },
+]
+docs = [
+    "myst-parser>=5.1.0",
+    "sphinx>=9.1.1",
 ]
 
 [build-system]
@@ -68,15 +73,15 @@ path = "README.md"
 # PyPI cannot follow relative links or render Mermaid.
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
 pattern = 'src="(docs/[^"]+)"'
-replacement = 'src="https://raw.githubusercontent.com/PaPa-jun/CurseCraft/main/\1"'
+replacement = 'src="https://raw.githubusercontent.com/PaPa-jun/ModSmith/main/\1"'
 
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
 pattern = 'href="(?!https?://)([^"]+)"'
-replacement = 'href="https://github.com/PaPa-jun/CurseCraft/blob/main/\1"'
+replacement = 'href="https://github.com/PaPa-jun/ModSmith/blob/main/\1"'
 
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
 pattern = '\]\((?!https?://)([^)]+)\)'
-replacement = '](https://github.com/PaPa-jun/CurseCraft/blob/main/\1)'
+replacement = '](https://github.com/PaPa-jun/ModSmith/blob/main/\1)'
 
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
 pattern = '```mermaid[\s\S]*?```\n\n'
@@ -110,6 +115,7 @@ select = ["B", "C4", "D", "E", "F", "I", "PT", "RUF", "SIM", "T20", "UP"]
 ignore = ["D105", "D107", "E501"]
 
 [tool.ruff.lint.per-file-ignores]
+"docs/conf.py" = ["D"]
 "tests/**" = ["D"]
 
 [tool.ruff.lint.isort]
