@@ -19,3 +19,5 @@ games/*
 
 # Mac files
 **/.DS_Store
+# Example caches
+.cache/
