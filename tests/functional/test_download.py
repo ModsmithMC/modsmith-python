@@ -26,6 +26,40 @@ def test_downloads_verifies_and_reports_bytes(server, session, tmp_path):
     assert events[-1] == ms.Progress("download", len(data), len(data), "byte")
 
 
+def test_progress_counts_files_that_are_already_valid(server, session, tmp_path):
+    (tmp_path / "old").write_bytes(b"old")
+    new = server.add_body("/new", b"newer")
+    items = [
+        Resource.of(server.url("/old"), tmp_path / "old", {"sha1": sha1(b"old")}, 3),
+        Resource.of(new, tmp_path / "new", {"sha1": sha1(b"newer")}, 5),
+    ]
+    events = []
+    download(items, session=session, progress=events.append)
+    assert max(event.current for event in events) == 8
+    assert events[-1].total == 8
+
+
+def test_progress_counts_a_resumed_file(server, session, tmp_path):
+    data = b"0123456789"
+    url = server.add_body("/file", data)
+    dest = tmp_path / "f"
+    part_of(dest).write_bytes(data[:4])
+    events = []
+    item = Resource.of(url, dest, {"sha1": sha1(data)}, len(data))
+    download(item, session=session, progress=events.append)
+    assert events[0].current == 4
+    assert events[-1].current == len(data)
+
+
+def test_progress_starts_over_when_a_file_is_replaced(server, session, tmp_path):
+    data = b"0123456789"
+    url = server.add("/file", Reply(b"wrongwrong"), Reply(data))
+    events = []
+    item = Resource.of(url, tmp_path / "f", {"sha1": sha1(data)}, len(data))
+    download(item, session=session, progress=events.append)
+    assert [event.current for event in events] == [10, 0, 10]
+
+
 def test_reports_files_when_sizes_are_unknown(server, session, tmp_path):
     url = server.add_body("/file", b"x")
     events = []
@@ -100,6 +134,66 @@ def test_recovers_from_a_stale_partial_file(server, session, tmp_path):
     assert dest.read_bytes() == data
 
 
+def test_server_failure_is_not_retried_twice_over(server, session, tmp_path):
+    url = server.add("/file", Reply(status=503))
+    with pytest.raises(DownloadError):
+        download(Resource.of(url, tmp_path / "f"), session=session)
+    assert len(server.hits("/file")) == session.attempts
+
+
+def test_moves_to_the_next_url_after_server_failures(server, session, tmp_path):
+    bad = server.add("/bad", Reply(status=503))
+    good = server.add_body("/good", b"payload")
+    download(Resource((bad, good), tmp_path / "f"), session=session)
+    assert (tmp_path / "f").read_bytes() == b"payload"
+    assert len(server.hits("/bad")) == session.attempts
+
+
+def test_resume_gets_the_whole_file_if_it_changed(server, session, tmp_path):
+    old = bytes(range(256)) * 1000
+    new = bytes(reversed(range(256))) * 1000
+    url = server.add(
+        "/file",
+        Reply(old, headers={"ETag": '"v1"'}, drop_after=CHUNK_SIZE + 10),
+        Reply(new, headers={"ETag": '"v2"'}),
+    )
+    download(Resource.of(url, tmp_path / "f", {"sha1": sha1(new)}), session=session)
+    assert (tmp_path / "f").read_bytes() == new
+    assert server.requests[1].headers["If-Range"] == '"v1"'
+    assert len(server.requests) == 2
+
+
+def test_weak_etag_is_not_used_to_resume(server, session, tmp_path):
+    data = bytes(range(256)) * 1000
+    url = server.add(
+        "/file",
+        Reply(data, headers={"ETag": 'W/"v1"'}, drop_after=CHUNK_SIZE + 10),
+        Reply(data),
+    )
+    download(Resource.of(url, tmp_path / "f"), session=session)
+    assert (tmp_path / "f").read_bytes() == data
+    assert "If-Range" not in server.requests[1].headers
+
+
+def test_range_at_the_wrong_offset_is_rejected(server, session, tmp_path):
+    data = bytes(range(256)) * 1000
+    wrong = Reply(data, 206, {"Content-Range": f"bytes 0-{len(data) - 1}/{len(data)}"})
+    url = server.add(
+        "/file", Reply(data, drop_after=CHUNK_SIZE + 10), wrong, Reply(data)
+    )
+    download(Resource.of(url, tmp_path / "f"), session=session)
+    assert (tmp_path / "f").read_bytes() == data
+
+
+def test_leftover_partial_without_a_hash_is_discarded(server, session, tmp_path):
+    url = server.add_body("/file", b"0123456789")
+    dest = tmp_path / "f"
+    part_of(dest).write_bytes(b"xxxx")
+    download(Resource.of(url, dest), session=session)
+    assert dest.read_bytes() == b"0123456789"
+    assert "Range" not in server.requests[0].headers
+
+
 def test_dropped_connection_is_resumed_on_retry(server, session, tmp_path):
     data = bytes(range(256)) * 1000
     url = server.add("/file", Reply(data, drop_after=CHUNK_SIZE + 10), Reply(data))
@@ -107,6 +201,7 @@ def test_dropped_connection_is_resumed_on_retry(server, session, tmp_path):
     download(Resource.of(url, dest, {"sha1": sha1(data)}), session=session)
     assert dest.read_bytes() == data
     assert server.requests[1].headers["Range"] == f"bytes={CHUNK_SIZE}-"
+    assert server.requests[1].headers.get("If-Range") is None
 
 
 def test_failed_download_keeps_complete_chunks_for_next_run(server, session, tmp_path):

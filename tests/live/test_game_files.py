@@ -45,6 +45,7 @@ def test_install_meta_loader(tmp_path, loader):
     game = ms.minecraft.GameDir(tmp_path)
     version_id = loader.install(game)
     assert game.has_version(version_id)
+    assert loader.expected_id() == version_id
     assert_libraries_present(game, version_id)
 
 
@@ -53,6 +54,7 @@ def test_install_processor_loader(tmp_path, loader):
     game = ms.minecraft.GameDir(tmp_path / "minecraft")
     version_id = loader.install(game, cache_dir=tmp_path / "cache")
     assert game.has_version(version_id)
+    assert loader.expected_id() == version_id
     assert_libraries_present(game, version_id)
 
 

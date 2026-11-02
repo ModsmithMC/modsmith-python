@@ -1,3 +1,5 @@
+"""Loaders installed from a metadata service: Fabric and Quilt."""
+
 from abc import abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,25 +16,58 @@ HASH_FIELDS = ("sha512", "sha256", "sha1", "md5")
 
 @dataclass(frozen=True)
 class MetaLoader(Loader):
-    """A loader described by a version JSON from a metadata service."""
+    """A loader described by a version JSON from a metadata service.
+
+    Attributes:
+        meta_url: The service's base URL.
+        default_maven: The repository for libraries that do not name one.
+    """
 
     meta_url: str = ""
     default_maven: ClassVar[str]
 
     @abstractmethod
     def profile_url(self) -> str:
-        """Where this loader's version JSON is served."""
+        """Return where this loader's version JSON is served."""
+
+    def expected_id(self) -> str:
+        """Return the version id that the metadata service gives this loader."""
+        return f"{self.kind}-loader-{self.version}-{self.minecraft}"
 
     def profile(self, session: Session | None = None) -> dict[str, Any]:
+        """Fetch this loader's version JSON.
+
+        Args:
+            session: The session to use. A temporary one is created if omitted.
+
+        Returns:
+            The decoded JSON.
+
+        Raises:
+            NetworkError: The service failed or does not know this version.
+        """
         with session_scope(session) as client:
             return client.get_json(self.profile_url())
 
     def version_id(
         self, *, session: Session | None = None, cache_dir: Path | None = None
     ) -> str:
+        """Return the id from the metadata service.
+
+        Args:
+            session: The session to use. A temporary one is created if omitted.
+            cache_dir: Not used by this loader.
+
+        Returns:
+            The version id.
+
+        Raises:
+            NetworkError: The service failed or does not know this version.
+        """
         return self.profile(session)["id"]
 
     def _resource(self, library: dict[str, Any], game: GameDir) -> Resource:
+        """Describe where to download one of the profile's libraries."""
         path = maven_path(library["name"])
         base: str = library.get("url") or self.default_maven
         hashes = {name: library[name] for name in HASH_FIELDS if library.get(name)}
@@ -53,6 +88,29 @@ class MetaLoader(Loader):
         progress: ProgressCallback | None = None,
         cancel: CancelToken | None = None,
     ) -> str:
+        """Install vanilla Minecraft, the libraries and the version JSON.
+
+        This does nothing if the version is already installed.
+
+        Args:
+            game: The game directory.
+            java: The Java binary to use. Not used by this loader.
+            cache_dir: The cache directory. Not used by this loader.
+            session: The session to use. A temporary one is created if omitted.
+            progress: Receives updates for each stage.
+            cancel: Stops the install.
+
+        Returns:
+            The installed version id.
+
+        Raises:
+            NetworkError: The metadata service could not be reached.
+            UnsupportedError: Mojang does not publish this Minecraft version.
+            DownloadError: A file could not be downloaded.
+            Cancelled: ``cancel`` was triggered.
+        """
+        if game.has_version(self.expected_id()):
+            return self.expected_id()
         with session_scope(session) as client:
             profile = self.profile(client)
             version_id: str = profile["id"]
@@ -75,20 +133,34 @@ class MetaLoader(Loader):
 @register
 @dataclass(frozen=True)
 class Fabric(MetaLoader):
+    """The Fabric loader.
+
+    Attributes:
+        meta_url: The base URL of Fabric's metadata service.
+    """
+
     kind: ClassVar[str] = "fabric"
     default_maven: ClassVar[str] = "https://maven.fabricmc.net/"
     meta_url: str = "https://meta.fabricmc.net/v2"
 
     def profile_url(self) -> str:
+        """Return where this version's JSON is served."""
         return f"{self.meta_url.rstrip('/')}/versions/loader/{self.minecraft}/{self.version}/profile/json"
 
 
 @register
 @dataclass(frozen=True)
 class Quilt(MetaLoader):
+    """The Quilt loader.
+
+    Attributes:
+        meta_url: The base URL of Quilt's metadata service.
+    """
+
     kind: ClassVar[str] = "quilt"
     default_maven: ClassVar[str] = "https://maven.quiltmc.org/repository/release/"
     meta_url: str = "https://meta.quiltmc.org/v3"
 
     def profile_url(self) -> str:
+        """Return where this version's JSON is served."""
         return f"{self.meta_url.rstrip('/')}/versions/loader/{self.minecraft}/{self.version}/profile/json"

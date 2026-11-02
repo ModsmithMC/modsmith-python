@@ -91,17 +91,22 @@ class LocalServer:
 
     def _send(self, handler: BaseHTTPRequestHandler, reply: Reply) -> None:
         status, body = reply.status, reply.body
+        headers = dict(reply.headers)
         match = re.fullmatch(r"bytes=(\d+)-", handler.headers.get("Range") or "")
-        if match and reply.ranges and status == 200:
+        if_range = handler.headers.get("If-Range")
+        fresh = if_range is None or if_range == headers.get("ETag")
+        if match and fresh and reply.ranges and status == 200:
             offset = int(match[1])
             if offset >= len(body):
                 status, body = 416, b""
             else:
+                last = len(body) - 1
+                headers["Content-Range"] = f"bytes {offset}-{last}/{len(body)}"
                 status, body = 206, body[offset:]
 
         handler.send_response(status)
         handler.send_header("Content-Length", str(len(body)))
-        for name, value in reply.headers.items():
+        for name, value in headers.items():
             handler.send_header(name, value)
         handler.end_headers()
         if reply.drop_after is None:

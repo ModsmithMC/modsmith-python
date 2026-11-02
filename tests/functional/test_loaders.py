@@ -181,6 +181,21 @@ def test_relative_paths_work_in_the_processor_directory(
     assert relative.has_version(version_id)
 
 
+def test_is_installed_uses_no_network(server, game, cache):
+    loader = Forge("36.2.42", "1.16.5", repository=server.base)
+    assert not loader.is_installed(game, cache_dir=cache)
+    game.write_version(VERSION_ID, {"id": VERSION_ID})
+    assert loader.is_installed(game, cache_dir=cache)
+    assert server.requests == []
+
+
+def test_install_of_an_installed_version_uses_no_network(server, game, cache):
+    loader = Forge("36.2.42", "1.16.5", repository=server.base)
+    game.write_version(VERSION_ID, {"id": VERSION_ID})
+    assert loader.install(game, cache_dir=cache) == VERSION_ID
+    assert server.requests == []
+
+
 def test_second_install_does_nothing(
     server, session, game, tmp_path, processor_jars, java, cache
 ):
@@ -264,12 +279,13 @@ def test_installer_without_sha1_file(
 @pytest.mark.parametrize("cls", [Fabric, Quilt], ids=["fabric", "quilt"])
 def test_meta_loader_install(server, session, game, cls):
     publish_vanilla(server, game)
+    version_id = f"{cls.kind}-loader-0.16.10-1.16.5"
     server.add_body("/maven/net/fabricmc/loader/1/loader-1.jar", b"lib")
     server.add_body("/maven/org/other/2/other-2.jar", b"other")
     server.add_json(
         "/meta/versions/loader/1.16.5/0.16.10/profile/json",
         {
-            "id": "loader-0.16.10-1.16.5",
+            "id": version_id,
             "libraries": [
                 {
                     "name": "net.fabricmc:loader:1",
@@ -282,7 +298,7 @@ def test_meta_loader_install(server, session, game, cls):
     )
     loader = cls("0.16.10", "1.16.5", server.url("/meta"))
 
-    assert loader.install(game, session=session) == "loader-0.16.10-1.16.5"
+    assert loader.install(game, session=session) == version_id
     assert game.library("net.fabricmc:loader:1").read_bytes() == b"lib"
     assert game.library("org:other:2").read_bytes() == b"other"
     assert loader.is_installed(game, session=session)

@@ -15,6 +15,16 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and updating game directories while keeping user changes.
 - `modsmith.minecraft`, `modsmith.java`, `modsmith.launcher` and `modsmith.net`.
 
+- `Instance.sync` stages new files and rolls back if it cannot finish, so a
+  failed update leaves the instance as it was.
+- `Platform.iter_releases` reads releases page by page, so finding the latest
+  one takes a single request.
+- Modpack overrides are streamed, so large packs no longer load into memory.
+- `Instance` remembers file hashes, so a sync with nothing to do is faster.
+- `Loader.is_installed` works offline for the built-in loaders.
+- Download progress counts skipped and resumed files, and reaches the total.
+- Requests respect `Retry-After`, and downloads use `If-Range` to resume.
+
 ### Changed
 
 - The project was renamed from CurseCraft and rebuilt as a developer toolkit.

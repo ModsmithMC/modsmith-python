@@ -1,3 +1,5 @@
+"""Loaders installed by running processors: Forge and NeoForge."""
+
 import logging
 import tempfile
 from abc import abstractmethod
@@ -17,22 +19,44 @@ from ._install_profile import InstallerJar, Library, Variables
 from ._processors import run_processors
 
 logger = logging.getLogger(__name__)
+LEGACY_NEOFORGE = "1.20.1"
 
 
 @dataclass(frozen=True)
 class ProcessorLoader(Loader):
-    """A loader installed by patching Minecraft with processor jars."""
+    """A loader installed by patching Minecraft with processor jars.
+
+    Attributes:
+        repository: The Maven repository that hosts the installers.
+        java_index_url: Where to read Mojang's runtime index.
+    """
 
     repository: str = ""
     java_index_url: str = java_runtime.RUNTIME_INDEX_URL
 
     @abstractmethod
     def installer_url(self) -> str:
-        """Where this version's installer jar is published."""
+        """Return where this version's installer jar is published."""
 
     def fetch_installer(
         self, *, session: Session | None = None, cache_dir: Path | None = None
     ) -> InstallerJar:
+        """Return this version's installer, downloading it if it is not cached.
+
+        The download is checked against the published SHA-1 when there is one.
+
+        Args:
+            session: The session to use. A temporary one is created if omitted.
+            cache_dir: The cache directory. Defaults to the per-user cache.
+
+        Returns:
+            The installer.
+
+        Raises:
+            DownloadError: The installer could not be downloaded.
+            LoaderError: The installer is malformed.
+            UnsupportedError: The installer is older than Minecraft 1.13.
+        """
         url = self.installer_url()
         dest = (cache_dir or default_cache_dir()) / "installers" / url.rsplit("/", 1)[1]
         if not dest.is_file():
@@ -48,9 +72,24 @@ class ProcessorLoader(Loader):
     def version_id(
         self, *, session: Session | None = None, cache_dir: Path | None = None
     ) -> str:
+        """Return the id declared by the installer, downloading it if needed.
+
+        Args:
+            session: The session to use. A temporary one is created if omitted.
+            cache_dir: The cache directory. Defaults to the per-user cache.
+
+        Returns:
+            The version id.
+
+        Raises:
+            DownloadError: The installer could not be downloaded.
+            LoaderError: The installer is malformed.
+            UnsupportedError: The installer is older than Minecraft 1.13.
+        """
         return self.fetch_installer(session=session, cache_dir=cache_dir).version_id
 
     def _resource(self, library: Library, game: GameDir) -> Resource | None:
+        """Describe a library's download, or None if the installer provided it."""
         dest = game.libraries_dir / library.path
         if library.url is None and dest.is_file():
             return None
@@ -67,6 +106,37 @@ class ProcessorLoader(Loader):
         progress: ProgressCallback | None = None,
         cancel: CancelToken | None = None,
     ) -> str:
+        """Install vanilla Minecraft, the libraries and the patched game files.
+
+        The version is registered last, so a failed install leaves no broken version
+        behind. This does nothing if the version is already installed.
+
+        Args:
+            game: The game directory.
+            java: The Java binary to use. By default, a matching official runtime
+                is used, then another installed runtime, then a download from
+                Mojang.
+            cache_dir: The cache directory. Defaults to the per-user cache.
+            session: The session to use. A temporary one is created if omitted.
+            progress: Receives updates for each stage.
+            cancel: Stops the install.
+
+        Returns:
+            The installed version id.
+
+        Raises:
+            LoaderError: The installer is malformed or targets another Minecraft
+                version.
+            ProcessorError: A processor failed.
+            JavaError: No usable Java runtime could be found or downloaded.
+            UnsupportedError: The version is not supported.
+            NetworkError: Mojang's version manifest could not be fetched.
+            DownloadError: A file could not be downloaded.
+            Cancelled: ``cancel`` was triggered.
+        """
+        expected = self.expected_id()
+        if expected is not None and game.has_version(expected):
+            return expected
         if cache_dir is not None:
             cache_dir = Path(cache_dir).resolve()  # processors run in another directory
         with session_scope(session) as client:
@@ -84,6 +154,7 @@ class ProcessorLoader(Loader):
             installer.extract_bundled_libraries(game.libraries_dir)
             libraries = [
                 *installer.profile.libraries,
+                # Entries with no URL are processor outputs, which cannot be downloaded.
                 *(item for item in installer.version_libraries if item.url),
             ]
             resources = [self._resource(item, game) for item in libraries]
@@ -108,6 +179,11 @@ class ProcessorLoader(Loader):
         progress: ProgressCallback | None,
         cancel: CancelToken | None,
     ) -> None:
+        """Run the client processors, choosing a Java runtime if none was given.
+
+        A failure on the exact runtime is final. Otherwise, each installed runtime is
+        tried, and Mojang's is downloaded as a last resort.
+        """
         processors = installer.profile.client_processors()
         if not processors:
             return
@@ -168,10 +244,21 @@ class ProcessorLoader(Loader):
 @register
 @dataclass(frozen=True)
 class Forge(ProcessorLoader):
+    """The Forge loader, for Minecraft 1.13 and later.
+
+    Attributes:
+        repository: The Maven repository that hosts the installers.
+    """
+
     kind: ClassVar[str] = "forge"
     repository: str = "https://maven.minecraftforge.net"
 
+    def expected_id(self) -> str:
+        """Return the version id that this version's installer declares."""
+        return f"{self.minecraft}-forge-{self.version}"
+
     def installer_url(self) -> str:
+        """Return where this version's installer jar is published."""
         version = f"{self.minecraft}-{self.version}"
         return f"{self.repository.rstrip('/')}/net/minecraftforge/forge/{version}/forge-{version}-installer.jar"
 
@@ -179,12 +266,26 @@ class Forge(ProcessorLoader):
 @register
 @dataclass(frozen=True)
 class NeoForge(ProcessorLoader):
+    """The NeoForge loader.
+
+    Attributes:
+        repository: The Maven repository that hosts the installers.
+    """
+
     kind: ClassVar[str] = "neoforge"
     repository: str = "https://maven.neoforged.net/releases"
 
+    def expected_id(self) -> str:
+        """Return the version id that this version's installer declares."""
+        if self.minecraft == LEGACY_NEOFORGE:
+            return f"{self.minecraft}-forge-{self.version}"
+        return f"neoforge-{self.version}"
+
     def installer_url(self) -> str:
+        """Return where this version's installer jar is published."""
         base = self.repository.rstrip("/")
-        if self.minecraft == "1.20.1":
+        # NeoForge's first release still used Forge's artifact name.
+        if self.minecraft == LEGACY_NEOFORGE:
             version = f"{self.minecraft}-{self.version}"
             return f"{base}/net/neoforged/forge/{version}/forge-{version}-installer.jar"
         return f"{base}/net/neoforged/neoforge/{self.version}/neoforge-{self.version}-installer.jar"
