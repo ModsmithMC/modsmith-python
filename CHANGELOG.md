@@ -6,6 +6,18 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-03
+
+### Fixed
+
+- The Documentation link on PyPI points to the new site,
+  <https://modsmith.meneither.site/>.
+
+### Changed
+
+- Project links and the default user agent use the `PaPa-jun/Modsmith`
+  repository name.
+
 ## [0.1.0] - 2026-11-03
 
 ### Added

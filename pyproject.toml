@@ -1,6 +1,6 @@
 [project]
 name = "modsmith"
-version = "0.1.0"
+version = "0.1.1"
 description = "A Python toolkit for Minecraft modpacks, mod loaders and game instances."
 dynamic = ["readme"]
 license = "MIT"
