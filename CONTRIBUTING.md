@@ -67,6 +67,24 @@ Platform behaviour is tested only in `tests/live`, against the real services.
   unconfirmed.
 - No test starts the game.
 
+## Continuous integration
+
+| Workflow | Runs | Does |
+| :--- | :--- | :--- |
+| `ci.yml` | Pull requests and pushes to `main` | Lint, type checks, tests on every OS and Python version, lowest dependencies, package build |
+| `live.yml` | Every Monday, or by hand | Runs `tests/live` on every OS |
+| `release.yml` | `v*` tags | Runs CI, publishes to PyPI and creates a GitHub release |
+
+`ci.yml` ends with an `All checks` job, which is the one to require in branch
+protection. `live.yml` reads `CURSEFORGE_API_KEY` from the repository secrets.
+
+## Releasing
+
+1. Set `version` in `pyproject.toml` and move the `Unreleased` notes in
+   `CHANGELOG.md` under the new version.
+2. Merge that change into `main`.
+3. Push a tag such as `v0.1.0`. The tag must match the project version.
+
 ## Commits
 
 Keep the change focused, write the subject in the imperative mood, and add a
