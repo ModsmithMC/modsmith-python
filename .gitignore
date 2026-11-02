@@ -12,6 +12,7 @@ wheels/
 # DeBugging files
 *.log
 *.json
+!tests/fixtures/**/*.json
 .minecraft/*
 temp/*
 games/*

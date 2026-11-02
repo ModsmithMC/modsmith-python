@@ -1,6 +1,6 @@
 # CurseCraft: A CurseForge Resource Manager Designed for the Official Launcher
 
-[![Python](https://img.shields.io/badge/python-3.10+-blue.svg?logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![Python](https://img.shields.io/badge/python-3.12+-blue.svg?logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![Minecraft](https://img.shields.io/badge/minecraft-1.13+-green.svg)](https://www.minecraft.net)
 [![Status](https://img.shields.io/badge/status-beta-orange.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
