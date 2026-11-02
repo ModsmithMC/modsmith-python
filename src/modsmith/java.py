@@ -202,7 +202,8 @@ def download(
     cache = _runtime_cache(cache_dir)
     with session_scope(session) as client:
         index = client.get_json(RUNTIME_INDEX_URL)
-        entries = index.get(platform_key(), {}).get(component) or []
+        builds: dict[str, Any] = index.get(platform_key(), {})
+        entries: list[dict[str, Any]] = builds.get(component) or []
         if not entries:
             raise JavaError(f"Mojang has no {component} for {platform_key()}")
         manifest = client.get_json(entries[0]["manifest"]["url"])

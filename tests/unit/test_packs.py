@@ -1,0 +1,167 @@
+import json
+
+import pytest
+
+from helpers import mrpack, mrpack_file, write_zip
+from modsmith.errors import PackError, UnsupportedError
+from modsmith.loaders import Fabric, NeoForge
+from modsmith.packs import FileRef, PackEntry, load, safe_relative
+
+URL = "https://cdn.test/a.jar"
+
+
+def curseforge_pack(path, overrides=None, **extra):
+    manifest = {
+        "manifestType": "minecraftModpack",
+        "name": "CF Pack",
+        "version": "2.0",
+        "overrides": "custom",
+        "minecraft": {
+            "version": "1.21.1",
+            "recommendedRam": 6144,
+            "modLoaders": [
+                {"id": "fabric-0.1", "primary": False},
+                {"id": "neoforge-21.1.233", "primary": True},
+            ],
+        },
+        "files": [
+            {"projectID": 1, "fileID": 10, "required": True},
+            {"projectID": 2, "fileID": 20, "required": False},
+        ],
+        **extra,
+    }
+    return write_zip(path, {"manifest.json": json.dumps(manifest), **(overrides or {})})
+
+
+def test_mrpack_is_complete_without_network(tmp_path):
+    pack = load(
+        mrpack(
+            tmp_path / "p.mrpack",
+            [mrpack_file("a.jar", b"a", URL, {"client": "required", "server": "unsupported"})],
+        )
+    )
+    assert pack.format == "mrpack"
+    assert pack.minecraft == "1.21.1"
+    assert pack.loader == Fabric("0.16.10", "1.21.1")
+    assert pack.unresolved == ()
+    entry = pack.entries[0]
+    assert entry.path == "mods/a.jar"
+    assert entry.urls == (URL,)
+    assert entry.server == "unsupported"
+    assert not entry.wanted("server")
+    assert entry.resource(tmp_path).path == tmp_path / "mods" / "a.jar"
+
+
+@pytest.mark.parametrize(
+    ("key", "expected"),
+    [("neoforge", "neoforge"), ("fabric-loader", "fabric"), ("quilt-loader", "quilt")],
+)
+def test_mrpack_loader_names(tmp_path, key, expected):
+    pack = load(mrpack(tmp_path / "p.mrpack", loader={key: "1"}))
+    assert pack.loader.kind == expected
+
+
+def test_mrpack_rejects_unsafe_paths(tmp_path):
+    file = mrpack_file("a.jar", b"a", URL)
+    file["path"] = "../../evil.jar"
+    with pytest.raises(PackError, match="Unsafe"):
+        load(mrpack(tmp_path / "p.mrpack", [file]))
+
+
+def test_mrpack_rejects_other_games(tmp_path):
+    index = {
+        "formatVersion": 1,
+        "game": "other",
+        "name": "x",
+        "versionId": "1",
+        "files": [],
+        "dependencies": {},
+    }
+    path = write_zip(tmp_path / "p.mrpack", {"modrinth.index.json": json.dumps(index)})
+    with pytest.raises(UnsupportedError):
+        load(path)
+
+
+def test_mrpack_with_invalid_index(tmp_path):
+    path = write_zip(tmp_path / "p.mrpack", {"modrinth.index.json": "{}"})
+    with pytest.raises(PackError):
+        load(path)
+
+
+def test_unknown_loader_only_fails_when_used(tmp_path):
+    pack = load(mrpack(tmp_path / "p.mrpack", loader={"mystery": "1"}))
+    assert pack.loader_kind == "mystery"
+    with pytest.raises(UnsupportedError):
+        _ = pack.loader
+
+
+def test_side_overrides_are_applied_last(tmp_path):
+    pack = load(
+        mrpack(
+            tmp_path / "p.mrpack",
+            overrides={
+                "overrides/config/a.txt": "common",
+                "overrides/config/b.txt": "common",
+                "client-overrides/config/a.txt": "client",
+                "server-overrides/config/s.txt": "server",
+            },
+        )
+    )
+    written = pack.extract_overrides(tmp_path / "game", "client")
+    assert (tmp_path / "game" / "config" / "a.txt").read_text() == "client"
+    assert (tmp_path / "game" / "config" / "b.txt").read_text() == "common"
+    assert "config/s.txt" not in written
+
+
+def test_curseforge_needs_resolving(tmp_path):
+    pack = load(curseforge_pack(tmp_path / "p.zip"))
+    assert pack.format == "curseforge"
+    assert pack.loader == NeoForge("21.1.233", "1.21.1")
+    assert pack.memory_mb == 6144
+    assert len(pack.unresolved) == 2
+    assert pack.entries[0].ref == FileRef("curseforge", "1", "10")
+    assert pack.entries[0].wanted("client")
+    assert not pack.entries[1].wanted("client")
+    assert pack.entries[1].wanted("client", include_optional=True)
+
+
+def test_curseforge_uses_declared_overrides_dir(tmp_path):
+    pack = load(curseforge_pack(tmp_path / "p.zip", {"custom/a.txt": "x", "other/b.txt": "y"}))
+    assert [path for path, _ in pack.iter_overrides()] == ["a.txt"]
+
+
+def test_curseforge_requires_loader(tmp_path):
+    path = curseforge_pack(tmp_path / "p.zip", minecraft={"version": "1", "modLoaders": []})
+    with pytest.raises(PackError):
+        load(path)
+
+
+def test_override_path_traversal_is_rejected(tmp_path):
+    pack = load(mrpack(tmp_path / "p.mrpack", overrides={"overrides/../../evil.txt": "x"}))
+    with pytest.raises(PackError):
+        pack.extract_overrides(tmp_path / "game")
+    assert not (tmp_path / "evil.txt").exists()
+
+
+@pytest.mark.parametrize("name", ["../evil", "/etc/passwd", "a/../../b", "C:/x", "a\\b"])
+def test_safe_relative_rejects(name):
+    with pytest.raises(PackError):
+        safe_relative(name)
+
+
+def test_not_a_zip(tmp_path):
+    path = tmp_path / "bad.zip"
+    path.write_bytes(b"nope")
+    with pytest.raises(PackError):
+        load(path)
+
+
+def test_unknown_format(tmp_path):
+    with pytest.raises(PackError, match="known"):
+        load(write_zip(tmp_path / "x.zip", {"a.txt": "x"}))
+
+
+def test_entry_is_resolved_only_with_path_and_url():
+    assert not PackEntry().is_resolved
+    assert not PackEntry(path="a").is_resolved
+    assert PackEntry(path="a", urls=("u",)).is_resolved
