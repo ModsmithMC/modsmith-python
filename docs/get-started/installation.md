@@ -1,15 +1,15 @@
 # Installation
 
-Modsmith needs Python 3.12 or newer. It is not on PyPI yet, so install it from GitHub:
+Modsmith needs Python 3.12 or newer. Install it from PyPI:
 
 ```bash
-pip install git+https://github.com/PaPa-jun/ModSmith
+pip install modsmith
 ```
 
 Or with [uv](https://docs.astral.sh/uv/):
 
 ```bash
-uv add git+https://github.com/PaPa-jun/ModSmith
+uv add modsmith
 ```
 
 Check that it works:

@@ -29,6 +29,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/PaPa-jun/ModSmith"
+Documentation = "https://papa-jun.github.io/ModSmith/"
 Issues = "https://github.com/PaPa-jun/ModSmith/issues"
 Changelog = "https://github.com/PaPa-jun/ModSmith/blob/main/CHANGELOG.md"
 
