@@ -304,7 +304,7 @@ svg {
   gap: 10px;
   max-width: 200px;
   color: var(--muted);
-  line-height: 1.25;
+  line-height: 18px;
 }
 
 .repo:hover {
@@ -325,12 +325,19 @@ svg path[d^="M8 0C3.58"] {
 
 .repo-text {
   display: grid;
+  grid-template-rows: auto 0fr;
   min-width: 0;
+  transition: grid-template-rows 0.15s;
+}
+
+.repo:hover .repo-text,
+.repo:focus-visible .repo-text {
+  grid-template-rows: auto 1fr;
 }
 
 .repo-name {
   overflow: hidden;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -339,7 +346,16 @@ svg path[d^="M8 0C3.58"] {
 .repo-facts {
   display: flex;
   gap: 10px;
+  min-height: 0;
+  overflow: hidden;
   font-size: 12px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.repo:hover .repo-facts,
+.repo:focus-visible .repo-facts {
+  opacity: 1;
 }
 
 .repo-facts:empty {
