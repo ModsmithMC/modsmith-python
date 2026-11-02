@@ -1,4 +1,7 @@
+"""The Modrinth platform."""
+
 import json
+from collections.abc import Iterator
 from typing import Any, ClassVar, Literal
 
 from pydantic import BaseModel, Field
@@ -17,9 +20,12 @@ from ._base import (
 
 API_URL = "https://api.modrinth.com/v2"
 SITE_URL = "https://modrinth.com"
+PAGE_SIZE = 100
 
 
 class _Hit(BaseModel):
+    """One search result from the Modrinth API."""
+
     project_id: str
     slug: str
     title: str
@@ -30,12 +36,16 @@ class _Hit(BaseModel):
 
 
 class _SearchResponse(BaseModel):
+    """The Modrinth API's search response."""
+
     hits: list[_Hit]
     total_hits: int = 0
     offset: int = 0
 
 
 class _Project(BaseModel):
+    """A project from the Modrinth API."""
+
     id: str
     slug: str
     title: str
@@ -46,6 +56,8 @@ class _Project(BaseModel):
 
 
 class _File(BaseModel):
+    """A version's file from the Modrinth API."""
+
     filename: str
     url: str
     hashes: dict[str, str] = Field(default_factory=dict[str, str])
@@ -54,6 +66,8 @@ class _File(BaseModel):
 
 
 class _Version(BaseModel):
+    """A version from the Modrinth API."""
+
     id: str
     project_id: str
     name: str
@@ -65,11 +79,22 @@ class _Version(BaseModel):
 
 
 def _project_url(project_type: str, slug: str) -> str:
+    """Return a project's web page."""
     return f"{SITE_URL}/{project_type}/{slug}"
 
 
 class Modrinth(Platform):
-    """Modrinth. No API key is needed; identify your tool with `user_agent`."""
+    """Modrinth. No API key is needed.
+
+    Args:
+        user_agent: Identifies your tool. Modrinth asks every client to set one.
+        session: The session to use, instead of creating one. ``user_agent`` is
+            then ignored.
+        base_url: The API's base URL.
+
+    Attributes:
+        base_url: The API's base URL.
+    """
 
     name: ClassVar[str] = "modrinth"
 
@@ -86,6 +111,7 @@ class Modrinth(Platform):
         self.base_url = base_url.rstrip("/")
 
     def _get(self, path: str, **params: Any) -> Any:
+        """Send a GET request to the API."""
         return self.session.get_json(self.base_url + path, params=params)
 
     def search(
@@ -98,6 +124,22 @@ class Modrinth(Platform):
         offset: int = 0,
         limit: int = 20,
     ) -> SearchResults:
+        """Search Modrinth's catalogue.
+
+        Args:
+            query: The search text.
+            project_type: The kind of project to find.
+            game_version: Only match this Minecraft version.
+            loader: Only match this mod loader.
+            offset: How many results to skip.
+            limit: The maximum number of results to return.
+
+        Returns:
+            One page of results.
+
+        Raises:
+            NetworkError: Modrinth could not be reached.
+        """
         facets = [[f"project_type:{project_type}"]]
         if game_version:
             facets.append([f"versions:{game_version}"])
@@ -131,6 +173,18 @@ class Modrinth(Platform):
     def get_project(
         self, ref: str | int, *, project_type: ProjectType = "modpack"
     ) -> Project:
+        """Look up a project by id, slug or URL.
+
+        Args:
+            ref: The project's id, slug or web address.
+            project_type: Not used, because Modrinth's ids are unique across types.
+
+        Returns:
+            The project.
+
+        Raises:
+            NetworkError: Modrinth could not be reached or does not know the project.
+        """
         data = _Project.model_validate(self._get(f"/project/{project_ref(ref)}"))
         return Project(
             platform=self.name,
@@ -144,39 +198,64 @@ class Modrinth(Platform):
             downloads=data.downloads,
         )
 
-    def list_releases(
+    def iter_releases(
         self,
         project: Project,
         *,
         game_version: str | None = None,
         loader: str | None = None,
         release_only: bool = False,
-    ) -> list[Release]:
-        params: dict[str, str] = {}
+    ) -> Iterator[Release]:
+        """Yield a project's releases, newest first, reading pages as needed.
+
+        Args:
+            project: The project.
+            game_version: Only list this Minecraft version.
+            loader: Only list this mod loader.
+            release_only: Leave out alpha and beta releases.
+
+        Yields:
+            Each release, once.
+
+        Raises:
+            NetworkError: Modrinth could not be reached.
+        """
+        params: dict[str, Any] = {"include_changelog": "false", "limit": PAGE_SIZE}
         if game_version:
             params["game_versions"] = json.dumps([game_version])
         if loader:
             params["loaders"] = json.dumps([loader])
-        items = self._get(f"/project/{project.id}/version", **params)
-        versions = [_Version.model_validate(item) for item in items]
-        releases = [
-            Release(
-                platform=self.name,
-                id=version.id,
-                project_id=version.project_id,
-                name=version.name,
-                release_type=version.version_type,
-                published=version.date_published,
-                game_versions=tuple(version.game_versions),
-                loaders=tuple(version.loaders),
-                files=tuple(
-                    ReleaseFile(
-                        file.filename, (file.url,), file.hashes, file.size, file.primary
-                    )
-                    for file in version.files
-                ),
-            )
-            for version in versions
-            if version.version_type == "release" or not release_only
-        ]
-        return sorted(releases, key=lambda item: item.published, reverse=True)
+        seen: set[str] = set()
+        offset = 0
+        while True:
+            page = self._get(f"/project/{project.id}/version", offset=offset, **params)
+            # Modrinth can return short pages before the end of the list, so
+            # only an empty page ends it, and the offset always moves by a page.
+            if not page:
+                return
+            offset += PAGE_SIZE
+            for item in page:
+                version = _Version.model_validate(item)
+                unwanted = release_only and version.version_type != "release"
+                if version.id not in seen and not unwanted:
+                    seen.add(version.id)
+                    yield self._to_release(version)
+
+    def _to_release(self, version: _Version) -> Release:
+        """Convert a Modrinth version to a `Release`."""
+        return Release(
+            platform=self.name,
+            id=version.id,
+            project_id=version.project_id,
+            name=version.name,
+            release_type=version.version_type,
+            published=version.date_published,
+            game_versions=tuple(version.game_versions),
+            loaders=tuple(version.loaders),
+            files=tuple(
+                ReleaseFile(
+                    file.filename, (file.url,), file.hashes, file.size, file.primary
+                )
+                for file in version.files
+            ),
+        )

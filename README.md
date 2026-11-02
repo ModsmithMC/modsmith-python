@@ -81,7 +81,7 @@ import modsmith as ms
 
 with ms.platforms.Modrinth("my-tool/1.0") as modrinth:
     project = modrinth.get_project("fabulously-optimized")
-    release = modrinth.list_releases(project, game_version="1.21.1")[0]
+    release = next(modrinth.iter_releases(project, game_version="1.21.1"))
     pack = ms.packs.load(modrinth.fetch(release, ".cache"))
 
 game = ms.minecraft.GameDir.default()

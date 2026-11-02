@@ -1,4 +1,7 @@
+"""The CurseForge platform."""
+
 import dataclasses
+from collections.abc import Iterator
 from typing import Any, ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -19,9 +22,14 @@ from ._base import (
 )
 
 API_URL = "https://api.curseforge.com"
+# Minecraft's id on CurseForge.
 GAME_ID = 432
+# The most ids to send in one request.
 BATCH_SIZE = 500
 PAGE_SIZE = 50
+# CurseForge rejects requests where index + pageSize is larger than this.
+MAX_RESULTS = 10000
+# CurseForge's numeric ids for hash algorithms, release types and categories.
 HASH_ALGORITHMS = {1: "sha1", 2: "md5"}
 RELEASE_TYPES: dict[int, ReleaseType] = {1: "release", 2: "beta", 3: "alpha"}
 PROJECT_CLASSES: dict[str, int] = {
@@ -42,15 +50,21 @@ LOADER_TYPES = {"forge": 1, "fabric": 4, "quilt": 5, "neoforge": 6}
 
 
 class _Schema(BaseModel):
+    """Base for CurseForge API models, which use camelCase names."""
+
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
 class _Hash(_Schema):
+    """A file hash from the CurseForge API."""
+
     value: str
     algo: int
 
 
 class _File(_Schema):
+    """A file from the CurseForge API."""
+
     id: int
     mod_id: int
     display_name: str = ""
@@ -65,6 +79,7 @@ class _File(_Schema):
 
     @property
     def hash_map(self) -> dict[str, str]:
+        """The digests keyed by algorithm name."""
         return {
             HASH_ALGORITHMS[item.algo]: item.value
             for item in self.hashes
@@ -72,6 +87,7 @@ class _File(_Schema):
         }
 
     def to_release(self, platform: str) -> Release:
+        """Convert this file to a `Release`."""
         urls = (self.download_url,) if self.download_url else ()
         return Release(
             platform=platform,
@@ -86,15 +102,21 @@ class _File(_Schema):
 
 
 class _Logo(_Schema):
+    """A project's logo from the CurseForge API."""
+
     url: str | None = None
     thumbnail_url: str | None = None
 
 
 class _Links(_Schema):
+    """A project's links from the CurseForge API."""
+
     website_url: str | None = None
 
 
 class _Mod(_Schema):
+    """A project from the CurseForge API."""
+
     id: int
     name: str
     slug: str
@@ -106,6 +128,7 @@ class _Mod(_Schema):
     download_count: int = 0
 
     def to_project(self, platform: str, project_type: str) -> Project:
+        """Convert this mod to a `Project`."""
         logo = self.logo
         return Project(
             platform=platform,
@@ -121,7 +144,20 @@ class _Mod(_Schema):
 
 
 class CurseForge(Platform):
-    """CurseForge. Requires an API key from console.curseforge.com."""
+    """CurseForge. Requires an API key from console.curseforge.com.
+
+    Args:
+        api_key: The API key.
+        session: The session to use. If omitted, the platform creates its own.
+        base_url: The API's base URL.
+
+    Attributes:
+        api_key: The API key.
+        base_url: The API's base URL.
+
+    Raises:
+        PlatformError: The API key is empty.
+    """
 
     name: ClassVar[str] = "curseforge"
 
@@ -140,19 +176,23 @@ class CurseForge(Platform):
 
     @property
     def _headers(self) -> dict[str, str]:
+        """The headers sent with every request."""
         return {"Accept": "application/json", "x-api-key": self.api_key}
 
     def _get(self, path: str, **params: Any) -> Any:
+        """Send a GET request to the API."""
         return self.session.get_json(
             self.base_url + path, headers=self._headers, params=params
         )
 
     def _post(self, path: str, payload: dict[str, Any]) -> Any:
+        """Send a POST request to the API."""
         return self.session.post_json(
             self.base_url + path, headers=self._headers, json=payload
         )
 
     def _search(self, project_type: str, **params: Any) -> Any:
+        """Search the Minecraft projects of one type."""
         return self._get(
             "/v1/mods/search",
             gameId=GAME_ID,
@@ -170,6 +210,22 @@ class CurseForge(Platform):
         offset: int = 0,
         limit: int = 20,
     ) -> SearchResults:
+        """Search CurseForge's catalogue.
+
+        Args:
+            query: The search text.
+            project_type: The kind of project to find.
+            game_version: Only match this Minecraft version.
+            loader: Only match this mod loader.
+            offset: How many results to skip.
+            limit: The maximum number of results to return.
+
+        Returns:
+            One page of results.
+
+        Raises:
+            NetworkError: CurseForge could not be reached.
+        """
         data = self._search(
             project_type,
             searchFilter=query,
@@ -186,6 +242,19 @@ class CurseForge(Platform):
     def get_project(
         self, ref: str | int, *, project_type: ProjectType = "modpack"
     ) -> Project:
+        """Look up a project by id, slug or URL.
+
+        Args:
+            ref: The project's id, slug or web address.
+            project_type: The kind of project. Slugs are only unique within a type.
+
+        Returns:
+            The project.
+
+        Raises:
+            PlatformError: No project has that slug.
+            NetworkError: CurseForge could not be reached or does not know the id.
+        """
         text = project_ref(ref)
         if text.isdigit():
             mod = _Mod.model_validate(self._get(f"/v1/mods/{text}")["data"])
@@ -195,29 +264,54 @@ class CurseForge(Platform):
             raise PlatformError(f"No CurseForge {project_type} found for {ref}")
         return _Mod.model_validate(data["data"][0]).to_project(self.name, project_type)
 
-    def list_releases(
+    def iter_releases(
         self,
         project: Project,
         *,
         game_version: str | None = None,
         loader: str | None = None,
         release_only: bool = False,
-    ) -> list[Release]:
-        data = self._get(
-            f"/v1/mods/{project.id}/files",
-            gameVersion=game_version,
-            modLoaderType=LOADER_TYPES.get(loader or ""),
-            pageSize=PAGE_SIZE,
-        )
-        files = [_File.model_validate(item) for item in data["data"]]
-        releases = [
-            file.to_release(self.name)
-            for file in files
-            if not file.is_server_pack and (file.release_type == 1 or not release_only)
-        ]
-        return sorted(releases, key=lambda item: item.published, reverse=True)
+    ) -> Iterator[Release]:
+        """Yield a project's releases, newest first, reading pages as needed.
+
+        Server packs are left out. CurseForge serves at most 10,000 files per
+        project, so older releases of a larger project are not listed.
+
+        Args:
+            project: The project.
+            game_version: Only list this Minecraft version.
+            loader: Only list this mod loader.
+            release_only: Leave out alpha and beta releases.
+
+        Yields:
+            Each release, once.
+
+        Raises:
+            NetworkError: CurseForge could not be reached.
+        """
+        seen: set[int] = set()
+        index = 0
+        while index + PAGE_SIZE <= MAX_RESULTS:
+            data = self._get(
+                f"/v1/mods/{project.id}/files",
+                gameVersion=game_version,
+                modLoaderType=LOADER_TYPES.get(loader or ""),
+                index=index,
+                pageSize=PAGE_SIZE,
+            )
+            page = [_File.model_validate(item) for item in data["data"]]
+            index += len(page)
+            for file in page:
+                unwanted = release_only and file.release_type != 1
+                if file.id not in seen and not file.is_server_pack and not unwanted:
+                    seen.add(file.id)
+                    yield file.to_release(self.name)
+            pagination: dict[str, Any] = data.get("pagination") or {}
+            if not page or index >= pagination.get("totalCount", 0):
+                return
 
     def _files(self, file_ids: list[int]) -> dict[int, _File]:
+        """Fetch files by id, in batches."""
         files: dict[int, _File] = {}
         for start in range(0, len(file_ids), BATCH_SIZE):
             batch = file_ids[start : start + BATCH_SIZE]
@@ -228,6 +322,7 @@ class CurseForge(Platform):
         return files
 
     def _mods(self, mod_ids: list[int]) -> dict[int, _Mod]:
+        """Fetch mods by id, in batches."""
         mods: dict[int, _Mod] = {}
         for start in range(0, len(mod_ids), BATCH_SIZE):
             batch = mod_ids[start : start + BATCH_SIZE]
@@ -240,6 +335,8 @@ class CurseForge(Platform):
     def _resolved_entry(
         self, entry: PackEntry, file: _File, mod: _Mod | None
     ) -> PackEntry:
+        """Fill in an entry from its file and mod."""
+        # CurseForge can omit the flag, and only an explicit False forbids downloads.
         allowed = mod is None or mod.allow_mod_distribution is not False
         url = file.download_url if allowed else None
         manual_url = None
@@ -258,10 +355,20 @@ class CurseForge(Platform):
         )
 
     def resolve(self, pack: Modpack) -> Modpack:
-        """Look up download details.
+        """Look up download details for a CurseForge pack.
 
-        A file whose author disallows third-party downloads stays unresolved
-        and carries a `manual_url`; so does a file CurseForge no longer lists.
+        A file whose author disallows third-party downloads stays unresolved and
+        carries a ``manual_url``. A file CurseForge no longer lists also stays
+        unresolved, with no ``manual_url``.
+
+        Args:
+            pack: The modpack.
+
+        Returns:
+            The modpack with resolved entries.
+
+        Raises:
+            NetworkError: CurseForge could not be reached.
         """
         pending = [
             entry

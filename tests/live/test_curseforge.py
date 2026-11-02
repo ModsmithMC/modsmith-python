@@ -1,6 +1,7 @@
 """Set CURSEFORGE_API_KEY to run these; they are skipped without it."""
 
 import os
+from itertools import islice
 
 import pytest
 
@@ -13,6 +14,8 @@ pytestmark = pytest.mark.skipif(
 MINECRAFT = "1.20.1"
 LARGE_PACK = "all-the-mods-9"
 PACK_WITH_BLOCKED_MODS = "craft-craft-smp"
+PAGE_SIZE = 50
+JEI = 238222
 
 
 @pytest.fixture
@@ -23,7 +26,7 @@ def curseforge():
 
 def latest_pack(curseforge, slug, into):
     project = curseforge.get_project(slug)
-    release = curseforge.list_releases(project, release_only=True)[0]
+    release = next(curseforge.iter_releases(project, release_only=True))
     return ms.packs.load(curseforge.fetch(release, into))
 
 
@@ -52,6 +55,35 @@ def test_unknown_slug(curseforge):
 def test_search_mods_by_loader(curseforge):
     results = curseforge.search("jei", project_type="mod", loader="forge", limit=5)
     assert results.projects
+
+
+def test_releases_span_every_page(curseforge):
+    project = curseforge.get_project(JEI, project_type="mod")
+    releases = curseforge.list_releases(project, game_version=MINECRAFT)
+    assert len(releases) > PAGE_SIZE
+    assert len({item.id for item in releases}) == len(releases)
+
+
+def test_iterating_reads_only_the_pages_it_needs():
+    with ms.net.Session() as session:
+        pages = []
+        session.http.hooks["response"].append(lambda response, **_: pages.append(1))
+        key = os.environ["CURSEFORGE_API_KEY"]
+        with ms.platforms.CurseForge(key, session=session) as curseforge:
+            project = curseforge.get_project(JEI, project_type="mod")
+            pages.clear()
+            releases = curseforge.iter_releases(project)
+            assert next(releases).id
+            assert len(pages) == 1
+            assert len(list(islice(releases, PAGE_SIZE + 1))) == PAGE_SIZE + 1
+            assert len(pages) == 2
+
+
+def test_first_release_is_the_newest(curseforge):
+    project = curseforge.get_project(JEI, project_type="mod")
+    first = list(islice(curseforge.iter_releases(project), 3 * PAGE_SIZE))
+    dates = [item.published for item in first]
+    assert dates == sorted(dates, reverse=True)
 
 
 def test_releases_exclude_server_packs(curseforge):

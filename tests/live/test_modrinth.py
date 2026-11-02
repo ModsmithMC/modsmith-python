@@ -7,6 +7,8 @@ import modsmith as ms
 USER_AGENT = "modsmith-tests/0.1"
 PROJECT = "fabulously-optimized"
 MINECRAFT = "1.21.1"
+LARGE_PROJECT = "sodium"
+PAGE_SIZE = 100
 
 
 @pytest.fixture
@@ -45,6 +47,25 @@ def test_releases_are_filtered_and_sorted(modrinth):
     assert releases[0].primary_file.name.endswith(".mrpack")
 
 
+def test_pages_match_the_complete_list(modrinth):
+    project = modrinth.get_project(LARGE_PROJECT, project_type="mod")
+    url = f"{modrinth.base_url}/project/{project.id}/version"
+    complete = [item["id"] for item in modrinth.session.get_json(url)]
+    assert len(complete) > 2 * PAGE_SIZE
+    assert [item.id for item in modrinth.iter_releases(project)] == complete
+
+
+def test_iterating_reads_only_the_pages_it_needs():
+    with ms.net.Session(USER_AGENT) as session:
+        pages = []
+        session.http.hooks["response"].append(lambda response, **_: pages.append(1))
+        with ms.platforms.Modrinth(session=session) as modrinth:
+            project = modrinth.get_project(LARGE_PROJECT, project_type="mod")
+            pages.clear()
+            assert next(modrinth.iter_releases(project)).id
+            assert len(pages) == 1
+
+
 def test_full_modpack_install(modrinth, tmp_path):
     game = ms.minecraft.GameDir(tmp_path / "minecraft")
     game.path.mkdir()
@@ -54,9 +75,9 @@ def test_full_modpack_install(modrinth, tmp_path):
     game_dir = tmp_path / "instance"
 
     project = modrinth.get_project(PROJECT)
-    release = modrinth.list_releases(
-        project, game_version=MINECRAFT, release_only=True
-    )[0]
+    release = next(
+        modrinth.iter_releases(project, game_version=MINECRAFT, release_only=True)
+    )
     pack = modrinth.resolve(ms.packs.load(modrinth.fetch(release, tmp_path / "cache")))
     assert pack.unresolved == ()
 
