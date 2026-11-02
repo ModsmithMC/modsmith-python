@@ -1,5 +1,4 @@
 import logging
-import os
 import threading
 from collections.abc import Callable, Iterable
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
@@ -7,6 +6,7 @@ from pathlib import Path
 
 import requests
 
+from .._support import replace_file
 from ..errors import Cancelled, DownloadError, IntegrityError, NetworkError
 from ..progress import CancelToken, ProgressCallback, report
 from ._resource import Resource, matches
@@ -85,7 +85,7 @@ def _fetch(
                 if not is_retryable(e):
                     break
                 continue
-            os.replace(part, resource.path)
+            replace_file(part, resource.path)
             return
         logger.warning("Download from %s failed: %s", url, last)
     raise DownloadError(f"Failed to download {resource.path.name}: {last}") from last
