@@ -67,6 +67,17 @@ Platform behaviour is tested only in `tests/live`, against the real services.
   unconfirmed.
 - No test starts the game.
 
+## Docstrings
+
+Write Google-style docstrings, in English, for every module, class and function.
+Ruff checks that they exist, so also check that they match what the code does.
+
+- Describe behaviour. Type annotations already give the types.
+- Add `Args`, `Returns` and `Raises` when a caller needs them.
+- Use single backticks for modsmith objects, which become links in the
+  documentation, and double backticks for parameters and literal values.
+- Use a code comment only to explain why something is done.
+
 ## Continuous integration
 
 | Workflow | Runs | Does |

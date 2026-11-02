@@ -1,3 +1,5 @@
+"""Modpack archive formats, and detecting which one an archive uses."""
+
 import json
 import zipfile
 from abc import ABC, abstractmethod
@@ -11,26 +13,61 @@ from ._model import FileRef, Modpack, PackEntry, Support, safe_relative
 
 
 class PackFormat(ABC):
-    """Reads one archive format. Subclass it and `register` it to add another."""
+    """Reads one archive format. Subclass it and `register` it to add another.
+
+    Attributes:
+        name: The format's name.
+        index_file: The file in the archive that identifies this format.
+    """
 
     name: ClassVar[str]
     index_file: ClassVar[str]
 
     @abstractmethod
     def parse(self, index: dict[str, Any], path: Path) -> Modpack:
-        """Build a `Modpack` from the archive's decoded index file."""
+        """Build a `Modpack` from the archive's decoded index file.
+
+        Args:
+            index: The decoded index file.
+            path: The archive.
+
+        Returns:
+            The modpack.
+
+        Raises:
+            PackError: The index is invalid.
+        """
 
 
 _formats: list[PackFormat] = []
 
 
 def register(format_: PackFormat) -> PackFormat:
+    """Add a format. The most recently registered format is tried first.
+
+    Args:
+        format_: The format.
+
+    Returns:
+        The same format.
+    """
     _formats.insert(0, format_)
     return format_
 
 
 def load(path: Path | str) -> Modpack:
-    """Read a modpack archive. Needs no network and no API key."""
+    """Read a modpack archive. Needs no network and no API key.
+
+    Args:
+        path: The archive.
+
+    Returns:
+        The modpack. CurseForge packs still need `Platform.resolve`.
+
+    Raises:
+        PackError: The archive is invalid or its format is unknown.
+        UnsupportedError: The pack is for another game.
+    """
     archive_path = Path(path)
     try:
         with zipfile.ZipFile(archive_path) as archive:
@@ -45,11 +82,15 @@ def load(path: Path | str) -> Modpack:
 
 
 class _MrpackEnv(BaseModel):
+    """A file's ``env`` object in ``modrinth.index.json``."""
+
     client: Support = "required"
     server: Support = "required"
 
 
 class _MrpackFile(BaseModel):
+    """An entry of ``files`` in ``modrinth.index.json``."""
+
     path: str
     hashes: dict[str, str]
     downloads: list[str]
@@ -58,6 +99,8 @@ class _MrpackFile(BaseModel):
 
 
 class _MrpackIndex(BaseModel):
+    """The contents of ``modrinth.index.json``."""
+
     format_version: int = Field(alias="formatVersion")
     game: str
     name: str
@@ -67,6 +110,12 @@ class _MrpackIndex(BaseModel):
 
 
 class Mrpack(PackFormat):
+    """The Modrinth ``.mrpack`` format.
+
+    Attributes:
+        roots: The folders that hold overrides, keyed by side.
+    """
+
     name = "mrpack"
     index_file = "modrinth.index.json"
     roots: ClassVar[dict[str, str]] = {
@@ -76,6 +125,19 @@ class Mrpack(PackFormat):
     }
 
     def parse(self, index: dict[str, Any], path: Path) -> Modpack:
+        """Build a `Modpack` from ``modrinth.index.json``.
+
+        Args:
+            index: The decoded index file.
+            path: The archive.
+
+        Returns:
+            The modpack. Its entries are already resolved.
+
+        Raises:
+            PackError: The index is invalid or does not name a game version or loader.
+            UnsupportedError: The pack is for another game.
+        """
         try:
             data = _MrpackIndex.model_validate(index)
         except ValidationError as e:
@@ -113,23 +175,31 @@ class Mrpack(PackFormat):
 
 
 class _CfFile(BaseModel):
+    """An entry of ``files`` in a CurseForge ``manifest.json``."""
+
     project_id: int = Field(alias="projectID")
     file_id: int = Field(alias="fileID")
     required: bool = True
 
 
 class _CfLoader(BaseModel):
+    """An entry of ``modLoaders`` in a CurseForge ``manifest.json``."""
+
     id: str
     primary: bool = False
 
 
 class _CfMinecraft(BaseModel):
+    """The ``minecraft`` object in a CurseForge ``manifest.json``."""
+
     version: str
     mod_loaders: list[_CfLoader] = Field(alias="modLoaders")
     recommended_ram: int | None = Field(default=None, alias="recommendedRam")
 
 
 class _CfManifest(BaseModel):
+    """The contents of a CurseForge ``manifest.json``."""
+
     manifest_type: Literal["minecraftModpack"] = Field(alias="manifestType")
     name: str = "Modpack"
     version: str = ""
@@ -139,10 +209,24 @@ class _CfManifest(BaseModel):
 
 
 class CurseForgePack(PackFormat):
+    """The CurseForge ``.zip`` format."""
+
     name = "curseforge"
     index_file = "manifest.json"
 
     def parse(self, index: dict[str, Any], path: Path) -> Modpack:
+        """Build a `Modpack` from ``manifest.json``.
+
+        Args:
+            index: The decoded index file.
+            path: The archive.
+
+        Returns:
+            The modpack. Its entries need `CurseForge.resolve`.
+
+        Raises:
+            PackError: The manifest is invalid or does not name a mod loader.
+        """
         try:
             data = _CfManifest.model_validate(index)
         except ValidationError as e:

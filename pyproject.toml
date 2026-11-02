@@ -106,11 +106,17 @@ target-version = "py312"
 src = ["src", "."]
 
 [tool.ruff.lint]
-select = ["B", "C4", "E", "F", "I", "PT", "RUF", "SIM", "T20", "UP"]
-ignore = ["E501"]
+select = ["B", "C4", "D", "E", "F", "I", "PT", "RUF", "SIM", "T20", "UP"]
+ignore = ["D105", "D107", "E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["modsmith", "tests"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
 
 [tool.pyright]
 include = ["src"]

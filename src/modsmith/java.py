@@ -30,8 +30,10 @@ __all__ = [
 RUNTIME_INDEX_URL = "https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json"
 STORE_PACKAGE = "Microsoft.4297127D64EC6_8wekyb3d8bbwe"
 LEGACY_COMPONENT = "jre-legacy"
+# Written last, so an interrupted download is never treated as installed.
 COMPLETE_MARKER = ".modsmith-complete"
 JAVA_BINARIES = ("bin/java.exe", "bin/java", "jre.bundle/Contents/Home/bin/java")
+# The order to try runtimes in when the exact one is not installed.
 PREFERRED_COMPONENTS = (
     "java-runtime-delta",
     "java-runtime-gamma",
@@ -44,12 +46,19 @@ PREFERRED_COMPONENTS = (
 
 @dataclass(frozen=True)
 class JavaRuntime:
+    """An installed Java runtime.
+
+    Attributes:
+        component: Mojang's name for the runtime, such as ``java-runtime-delta``.
+        executable: The path of the ``java`` binary.
+    """
+
     component: str
     executable: Path
 
 
 def platform_key() -> str:
-    """Mojang's name for the current platform, such as `windows-x64`."""
+    """Return Mojang's name for this platform, such as ``windows-x64``."""
     machine = platform.machine().lower()
     arm = machine in ("arm64", "aarch64")
     if sys.platform == "win32":
@@ -62,7 +71,14 @@ def platform_key() -> str:
 
 
 def official_runtime_dirs(game: GameDir | None = None) -> list[Path]:
-    """Directories where the official launcher keeps Java runtimes."""
+    """List the directories where the official launcher keeps Java runtimes.
+
+    Args:
+        game: The game directory. Defaults to `GameDir.default`.
+
+    Returns:
+        The candidate directories. They may not exist.
+    """
     game = game or GameDir.default()
     dirs = [game.path / "runtime"]
     if sys.platform == "win32":
@@ -77,7 +93,20 @@ def official_runtime_dirs(game: GameDir | None = None) -> list[Path]:
 
 
 def required_for(version: Version, game: GameDir | None = None) -> str:
-    """The runtime component a version needs, following `inheritsFrom`."""
+    """Return the runtime component a version needs.
+
+    Loader versions usually inherit it, so this follows ``inheritsFrom``.
+
+    Args:
+        version: The version.
+        game: The game directory that holds parent versions.
+
+    Returns:
+        The component, or ``jre-legacy`` if no version in the chain declares one.
+
+    Raises:
+        UnsupportedError: A parent version is not installed.
+    """
     current = version
     while current.java_component is None and current.inherits_from and game:
         current = game.version(current.inherits_from)
@@ -85,6 +114,7 @@ def required_for(version: Version, game: GameDir | None = None) -> str:
 
 
 def _binary_in(runtime_dir: Path, component: str) -> Path | None:
+    """Find a component's ``java`` binary inside a runtime directory."""
     component_dir = runtime_dir / component
     if not component_dir.is_dir():
         return None
@@ -97,6 +127,7 @@ def _binary_in(runtime_dir: Path, component: str) -> Path | None:
 
 
 def _runtime_cache(cache_dir: Path | None) -> Path:
+    """Return the directory where downloaded runtimes are kept."""
     return (cache_dir or default_cache_dir()) / "java"
 
 
@@ -106,7 +137,16 @@ def find(
     game: GameDir | None = None,
     cache_dir: Path | None = None,
 ) -> JavaRuntime | None:
-    """Find a runtime in the official launcher or the download cache."""
+    """Find a runtime in the official launcher or the download cache.
+
+    Args:
+        component: The runtime component, such as ``java-runtime-delta``.
+        game: The game directory. Defaults to `GameDir.default`.
+        cache_dir: The cache directory. Defaults to the per-user cache.
+
+    Returns:
+        The runtime, or None if it is not installed.
+    """
     for runtime_dir in official_runtime_dirs(game):
         binary = _binary_in(runtime_dir, component)
         if binary:
@@ -122,11 +162,21 @@ def find(
 def find_all(
     *, game: GameDir | None = None, cache_dir: Path | None = None
 ) -> list[JavaRuntime]:
+    """Find every known runtime that is installed, in order of preference.
+
+    Args:
+        game: The game directory. Defaults to `GameDir.default`.
+        cache_dir: The cache directory. Defaults to the per-user cache.
+
+    Returns:
+        The runtimes found.
+    """
     found = (find(c, game=game, cache_dir=cache_dir) for c in PREFERRED_COMPONENTS)
     return [runtime for runtime in found if runtime]
 
 
 def _unpack(packed: Path, path: Path, sha1: str, cancel: CancelToken | None) -> None:
+    """Decompress an LZMA file, check its hash and delete the archive."""
     with lzma.open(packed) as source, open(path, "wb") as dest:
         while chunk := source.read(1 << 20):
             if cancel is not None:
@@ -145,6 +195,7 @@ def _install_entries(
     progress: ProgressCallback | None,
     cancel: CancelToken | None,
 ) -> None:
+    """Install a runtime manifest's files, permissions and links."""
     resources: list[Resource] = []
     packed_files: list[tuple[Path, Path, str]] = []
     links: list[tuple[Path, str]] = []
@@ -201,7 +252,28 @@ def download(
     cancel: CancelToken | None = None,
     index_url: str = RUNTIME_INDEX_URL,
 ) -> JavaRuntime:
-    """Download a Mojang runtime into the cache, never the launcher's directory."""
+    """Download a Mojang runtime into the cache, never the launcher's directory.
+
+    Files that are already valid are kept, so an interrupted download can be run
+    again.
+
+    Args:
+        component: The runtime component, such as ``java-runtime-delta``.
+        cache_dir: The cache directory. Defaults to the per-user cache.
+        session: The session to use. A temporary one is created if omitted.
+        progress: Receives download updates.
+        cancel: Stops the download.
+        index_url: Where to read Mojang's runtime index.
+
+    Returns:
+        The installed runtime.
+
+    Raises:
+        JavaError: Mojang has no such runtime for this platform, or it is corrupt.
+        NetworkError: The runtime index could not be fetched.
+        DownloadError: A file could not be downloaded.
+        Cancelled: ``cancel`` was triggered.
+    """
     cache = _runtime_cache(cache_dir)
     with session_scope(session) as client:
         index = client.get_json(index_url)

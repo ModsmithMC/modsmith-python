@@ -1,3 +1,5 @@
+"""Mojang's version manifest and vanilla game downloads."""
+
 from dataclasses import dataclass
 
 from ..errors import UnsupportedError
@@ -11,6 +13,16 @@ VERSION_MANIFEST_URL = "https://piston-meta.mojang.com/mc/game/version_manifest_
 
 @dataclass(frozen=True)
 class VersionInfo:
+    """One entry in Mojang's version manifest.
+
+    Attributes:
+        id: The version id.
+        type: The kind of version, such as ``release`` or ``snapshot``.
+        url: Where to download the version JSON.
+        sha1: The version JSON's SHA-1.
+        release_time: When the version was released, in ISO 8601 format.
+    """
+
     id: str
     type: str
     url: str
@@ -21,7 +33,18 @@ class VersionInfo:
 def list_versions(
     session: Session | None = None, *, manifest_url: str = VERSION_MANIFEST_URL
 ) -> list[VersionInfo]:
-    """List every Minecraft version Mojang publishes, newest first."""
+    """List every Minecraft version Mojang publishes, newest first.
+
+    Args:
+        session: The session to use. A temporary one is created if omitted.
+        manifest_url: Where to read the manifest.
+
+    Returns:
+        The manifest's entries.
+
+    Raises:
+        NetworkError: The manifest could not be fetched.
+    """
     with session_scope(session) as client:
         manifest = client.get_json(manifest_url)
     return [
@@ -39,7 +62,27 @@ def install_version(
     cancel: CancelToken | None = None,
     manifest_url: str = VERSION_MANIFEST_URL,
 ) -> Version:
-    """Download a vanilla version's JSON and client jar into `game`."""
+    """Download a vanilla version's JSON and client jar into ``game``.
+
+    Files that are already valid are kept.
+
+    Args:
+        game: The game directory.
+        version_id: The Minecraft version.
+        session: The session to use. A temporary one is created if omitted.
+        progress: Receives updates while the client jar downloads.
+        cancel: Stops the download.
+        manifest_url: Where to read Mojang's version manifest.
+
+    Returns:
+        The installed version.
+
+    Raises:
+        UnsupportedError: The version is unknown or has no client download.
+        NetworkError: The manifest could not be fetched.
+        DownloadError: A file could not be downloaded.
+        Cancelled: ``cancel`` was triggered.
+    """
     with session_scope(session) as client:
         if not game.has_version(version_id):
             info = next(
