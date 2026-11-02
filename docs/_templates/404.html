@@ -1,0 +1,19 @@
+{%- extends "layout.html" -%}
+{%- set title = "Page not found" -%}
+
+{%- block extrahead %}
+{# This page is served from any path, so its links need a fixed base. #}
+<base href="{{ theme_base_url }}">
+{{- super() }}
+{%- endblock %}
+
+{%- block body %}
+<section class="not-found">
+  <p class="eyebrow">404</p>
+  <h1>Page not found</h1>
+  <p>This page has moved, or it never existed.</p>
+  <div class="actions">
+    <a class="button primary" href="./">Back to the home page</a>
+  </div>
+</section>
+{%- endblock %}
