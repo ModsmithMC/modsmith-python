@@ -69,7 +69,7 @@ class _MrpackIndex(BaseModel):
 class Mrpack(PackFormat):
     name = "mrpack"
     index_file = "modrinth.index.json"
-    roots = {
+    roots: ClassVar[dict[str, str]] = {
         "common": "overrides",
         "client": "client-overrides",
         "server": "server-overrides",

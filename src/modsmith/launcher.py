@@ -21,8 +21,25 @@ PROFILE_FILES = ("launcher_profiles.json", "launcher_profiles_microsoft_store.js
 BACKUP_SUFFIX = ".modsmith.bak"
 KEY_PREFIX = "modsmith-"
 LAUNCHER_PROCESSES = frozenset(
-    {"minecraft.exe", "minecraftlauncher.exe", "minecraft launcher", "minecraft-launcher"}
+    {
+        "minecraft.exe",
+        "minecraftlauncher.exe",
+        "minecraft launcher",
+        "minecraft-launcher",
+    }
 )
+
+
+def parse_tasklist(output: str) -> set[str]:
+    return {
+        line.split('","')[0].strip('"').lower() for line in output.splitlines() if line
+    }
+
+
+def parse_ps(output: str) -> set[str]:
+    return {
+        line.rsplit("/", 1)[-1].strip().lower() for line in output.splitlines() if line
+    }
 
 
 def _process_names() -> set[str]:
@@ -36,10 +53,7 @@ def _process_names() -> set[str]:
         ).stdout
     except (OSError, subprocess.SubprocessError):
         return set()
-    lines = [line for line in output.splitlines() if line]
-    if windows:
-        return {line.split('","')[0].strip('"').lower() for line in lines}
-    return {line.rsplit("/", 1)[-1].strip().lower() for line in lines}
+    return parse_tasklist(output) if windows else parse_ps(output)
 
 
 def is_running() -> bool:

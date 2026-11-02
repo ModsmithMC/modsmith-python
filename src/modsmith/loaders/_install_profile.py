@@ -112,12 +112,9 @@ class InstallerJar:
         return self.version_json["id"]
 
     @property
-    def libraries(self) -> list[Library]:
-        version_libraries = self.version_json.get("libraries", [])
-        return [
-            *self.profile.libraries,
-            *(Library.model_validate(item) for item in version_libraries),
-        ]
+    def version_libraries(self) -> list[Library]:
+        items = self.version_json.get("libraries", [])
+        return [Library.model_validate(item) for item in items]
 
     def extract_bundled_libraries(self, libraries_dir: Path) -> None:
         with zipfile.ZipFile(self.path) as archive:

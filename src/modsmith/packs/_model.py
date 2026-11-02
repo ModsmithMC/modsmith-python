@@ -73,7 +73,9 @@ class Modpack:
     loader_version: str
     entries: tuple[PackEntry, ...]
     archive: Path
-    override_roots: Mapping[str, str] = field(default_factory=dict[str, str], hash=False)
+    override_roots: Mapping[str, str] = field(
+        default_factory=dict[str, str], hash=False
+    )
     memory_mb: int | None = None
 
     @property

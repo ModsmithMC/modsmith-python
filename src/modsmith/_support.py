@@ -17,6 +17,11 @@ def slugify(name: str, fallback: str = "instance") -> str:
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or fallback
 
 
+def copy_replace(source: Path, dest: Path) -> None:
+    shutil.copy2(source, dest)
+    source.unlink()
+
+
 def replace_file(source: Path, dest: Path) -> None:
     """Rename over `dest`, copying when the filesystem refuses the rename.
 
@@ -28,8 +33,7 @@ def replace_file(source: Path, dest: Path) -> None:
     except OSError as e:
         if e.errno != errno.EXDEV:
             raise
-        shutil.copy2(source, dest)
-        source.unlink()
+        copy_replace(source, dest)
 
 
 def write_atomic(path: Path, data: bytes) -> None:

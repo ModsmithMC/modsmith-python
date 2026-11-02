@@ -237,7 +237,9 @@ class CurseForge(Platform):
                 mods[mod.id] = mod
         return mods
 
-    def _resolved_entry(self, entry: PackEntry, file: _File, mod: _Mod | None) -> PackEntry:
+    def _resolved_entry(
+        self, entry: PackEntry, file: _File, mod: _Mod | None
+    ) -> PackEntry:
         allowed = mod is None or mod.allow_mod_distribution is not False
         url = file.download_url if allowed else None
         manual_url = None

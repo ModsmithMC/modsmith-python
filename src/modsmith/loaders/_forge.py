@@ -24,6 +24,7 @@ class ProcessorLoader(Loader):
     """A loader installed by patching Minecraft with processor jars."""
 
     repository: str = ""
+    java_index_url: str = java_runtime.RUNTIME_INDEX_URL
 
     @abstractmethod
     def installer_url(self) -> str:
@@ -79,7 +80,11 @@ class ProcessorLoader(Loader):
                 game, self.minecraft, session=client, progress=progress, cancel=cancel
             )
             installer.extract_bundled_libraries(game.libraries_dir)
-            resources = [self._resource(item, game) for item in installer.libraries]
+            libraries = [
+                *installer.profile.libraries,
+                *(item for item in installer.version_libraries if item.url),
+            ]
+            resources = [self._resource(item, game) for item in libraries]
             download(
                 [item for item in resources if item],
                 session=client,
@@ -130,7 +135,9 @@ class ProcessorLoader(Loader):
             component = java_runtime.required_for(game.version(self.minecraft), game)
             exact = java_runtime.find(component, game=game, cache_dir=cache_dir)
             candidates = (
-                [exact] if exact else java_runtime.find_all(game=game, cache_dir=cache_dir)
+                [exact]
+                if exact
+                else java_runtime.find_all(game=game, cache_dir=cache_dir)
             )
             failure: ProcessorError | None = None
             for runtime in candidates:
@@ -149,6 +156,7 @@ class ProcessorLoader(Loader):
                     session=session,
                     progress=progress,
                     cancel=cancel,
+                    index_url=self.java_index_url,
                 )
             except JavaError as e:
                 raise (failure or e) from e

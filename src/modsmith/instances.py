@@ -73,9 +73,7 @@ def _targets(
         if entry.path:
             targets[entry.path] = _Target(entry.hashes, entry=entry)
     for relative, data in pack.iter_overrides(side):
-        targets[relative] = _Target(
-            {"sha1": hashlib.sha1(data).hexdigest()}, data=data
-        )
+        targets[relative] = _Target({"sha1": hashlib.sha1(data).hexdigest()}, data=data)
     return targets, tuple(unresolved)
 
 
@@ -177,7 +175,9 @@ class Instance:
         files: dict[str, str] = {}
         for relative, target in targets.items():
             if relative in kept:
-                files[relative] = target.hashes.get("sha1") or previous.get(relative, "")
+                files[relative] = target.hashes.get("sha1") or previous.get(
+                    relative, ""
+                )
             else:
                 files[relative] = file_hash(self.path / relative)
         state = InstanceState(

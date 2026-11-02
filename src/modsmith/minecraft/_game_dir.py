@@ -33,7 +33,9 @@ class Version:
     client_url: str | None = None
     client_sha1: str | None = None
     client_size: int | None = None
-    raw: dict[str, Any] = field(default_factory=dict[str, Any], repr=False, compare=False)
+    raw: dict[str, Any] = field(
+        default_factory=dict[str, Any], repr=False, compare=False
+    )
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Version":

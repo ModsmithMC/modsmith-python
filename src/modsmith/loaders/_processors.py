@@ -98,7 +98,9 @@ def build_command(
     ]
 
 
-def execute(command: list[str], cwd: str, cancel: CancelToken | None) -> tuple[int, str]:
+def execute(
+    command: list[str], cwd: str, cancel: CancelToken | None
+) -> tuple[int, str]:
     try:
         process = subprocess.Popen(
             command,

@@ -71,7 +71,7 @@ def official_runtime_dirs(game: GameDir | None = None) -> list[Path]:
             dirs.append(
                 Path(local, "Packages", STORE_PACKAGE, "LocalCache", "Local", "runtime")
             )
-        program_files = os.getenv("ProgramFiles(x86)", r"C:\Program Files (x86)")
+        program_files = os.getenv("PROGRAMFILES(X86)", r"C:\Program Files (x86)")
         dirs.append(Path(program_files, "Minecraft Launcher", "runtime"))
     return dirs
 
@@ -176,7 +176,9 @@ def _install_entries(
                 packed_files.append((packed, path, raw["sha1"]))
             else:
                 resources.append(
-                    Resource.of(raw["url"], path, {"sha1": raw["sha1"]}, raw.get("size"))
+                    Resource.of(
+                        raw["url"], path, {"sha1": raw["sha1"]}, raw.get("size")
+                    )
                 )
 
     fetch(resources, session=session, progress=progress, cancel=cancel, task="java")
@@ -197,11 +199,12 @@ def download(
     session: Session | None = None,
     progress: ProgressCallback | None = None,
     cancel: CancelToken | None = None,
+    index_url: str = RUNTIME_INDEX_URL,
 ) -> JavaRuntime:
     """Download a Mojang runtime into the cache, never the launcher's directory."""
     cache = _runtime_cache(cache_dir)
     with session_scope(session) as client:
-        index = client.get_json(RUNTIME_INDEX_URL)
+        index = client.get_json(index_url)
         builds: dict[str, Any] = index.get(platform_key(), {})
         entries: list[dict[str, Any]] = builds.get(component) or []
         if not entries:
