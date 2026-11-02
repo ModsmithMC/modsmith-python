@@ -1,15 +1,80 @@
-# Modsmith
+<p align="center">
+  <img src="docs/assets/banner.svg" alt="Modsmith" width="100%">
+</p>
 
-[![Python](https://img.shields.io/badge/python-3.12+-blue.svg?logo=python&logoColor=white)](https://www.python.org/downloads/)
-[![Status](https://img.shields.io/badge/status-alpha-orange.svg)]()
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Read in Chinese](https://img.shields.io/badge/README-%E4%B8%AD%E6%96%87-red?style=flat-square&logo=github)](README_ZH.md)
+<p align="center">
+  <strong>A Python toolkit for Minecraft modpacks, mod loaders and game instances.</strong>
+</p>
 
-A Python toolkit for Minecraft modpacks, mod loaders and game instances.
+<p align="center">
+  <a href="https://github.com/PaPa-jun/CurseCraft/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/PaPa-jun/CurseCraft/ci.yml?branch=main&style=flat-square&label=CI&logo=github" alt="CI"></a>
+  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.12%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.12+"></a>
+  <a href="https://microsoft.github.io/pyright/"><img src="https://img.shields.io/badge/types-pyright%20strict-2F74C0?style=flat-square" alt="Pyright strict"></a>
+  <a href="https://docs.astral.sh/ruff/"><img src="https://img.shields.io/badge/code%20style-ruff-D7FF64?style=flat-square&logo=ruff&logoColor=black" alt="Ruff"></a>
+  <img src="https://img.shields.io/badge/status-alpha-orange?style=flat-square" alt="Alpha">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="MIT license"></a>
+</p>
 
-Modsmith is a library, not a launcher. It gives you composable modules to search Modrinth and CurseForge, read modpacks, install mod loaders, manage game directories and work with the official launcher. It does not sign in to accounts or start the game.
+<p align="center">
+  <strong>English</strong> · <a href="README_ZH.md">简体中文</a>
+</p>
 
-## Example
+---
+
+Modsmith is a library, not a launcher. Its small modules work together or alone, so you can build your own modpack installer, updater, CLI or GUI.
+
+<table>
+  <tr>
+    <td width="33%" valign="top">
+      <img src="docs/assets/icons/search.svg" alt="" width="26" height="26">
+      <h4>Two platforms, one API</h4>
+      Search and download from Modrinth and CurseForge the same way.
+    </td>
+    <td width="33%" valign="top">
+      <img src="docs/assets/icons/package.svg" alt="" width="26" height="26">
+      <h4>Modpacks, even offline</h4>
+      Open Modrinth and CurseForge packs without a network connection.
+    </td>
+    <td width="33%" valign="top">
+      <img src="docs/assets/icons/layers.svg" alt="" width="26" height="26">
+      <h4>Four mod loaders</h4>
+      Install Forge, NeoForge, Fabric and Quilt with one call.
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      <img src="docs/assets/icons/refresh.svg" alt="" width="26" height="26">
+      <h4>Safe updates</h4>
+      Update a modpack and keep the changes players made.
+    </td>
+    <td valign="top">
+      <img src="docs/assets/icons/cup.svg" alt="" width="26" height="26">
+      <h4>The right Java</h4>
+      Find the Java that a game version needs, or download it.
+    </td>
+    <td valign="top">
+      <img src="docs/assets/icons/shield.svg" alt="" width="26" height="26">
+      <h4>Reliable downloads</h4>
+      Files are verified, and interrupted downloads pick up where they stopped.
+    </td>
+  </tr>
+</table>
+
+## Installation
+
+Modsmith needs Python 3.12 or newer. It is not on PyPI yet, so install it from GitHub:
+
+```bash
+uv add git+https://github.com/PaPa-jun/CurseCraft
+```
+
+```bash
+pip install git+https://github.com/PaPa-jun/CurseCraft
+```
+
+## Quick start
+
+Download a modpack from Modrinth, install its loader, create an instance and add it to the official launcher:
 
 ```python
 import modsmith as ms
@@ -23,38 +88,179 @@ game = ms.minecraft.GameDir.default()
 version_id = pack.loader.install(game)
 
 instance = ms.instances.Instance.open("instances/fabulously-optimized")
-print(instance.diff(pack))
 instance.sync(pack)
 
 ms.launcher.Launcher(game).add_profile(pack.name, version_id, instance.path)
 ```
 
-Each module also works alone:
+Open the official launcher once before you run this, and keep it closed while it runs. To update, run `instance.sync(pack)` again with a newer pack.
+
+## Recipes
+
+Every module also works alone.
+
+<details>
+<summary><b>Search for projects</b></summary>
 
 ```python
-pack = ms.packs.load("pack.mrpack")  # no network, no API key
-ms.loaders.NeoForge("21.1.233", "1.21.1").install(game)  # only a mod loader
+with ms.platforms.Modrinth("my-tool/1.0") as modrinth:
+    results = modrinth.search("sodium", project_type="mod", loader="fabric", limit=5)
+
+for project in results.projects:
+    print(project.name, project.url, project.downloads)
 ```
 
-## Modules
+</details>
+
+<details>
+<summary><b>Install a CurseForge modpack</b></summary>
+
+CurseForge needs an [API key](https://console.curseforge.com/). Some mods can only be downloaded by hand. They stay in `pack.unresolved`, and `sync` can pick them up from a folder.
+
+```python
+import os
+from pathlib import Path
+
+with ms.platforms.CurseForge(os.environ["CURSEFORGE_API_KEY"]) as curseforge:
+    pack = curseforge.resolve(ms.packs.load("pack.zip"))
+
+for entry in pack.unresolved:
+    print(entry.manual_url)
+
+instance.sync(pack, adopt_from=[Path.home() / "Downloads"])
+```
+
+</details>
+
+<details>
+<summary><b>Preview an update</b></summary>
+
+```python
+changes = instance.diff(pack)  # changes nothing
+
+print("New:", changes.added)
+print("Updated:", changes.updated)
+print("Removed:", changes.removed)
+print("Changed by the player:", changes.conflicts)
+```
+
+</details>
+
+<details>
+<summary><b>Install only a mod loader</b></summary>
+
+```python
+game = ms.minecraft.GameDir.default()
+
+ms.loaders.Fabric("0.16.10", "1.21.1").install(game)
+ms.loaders.NeoForge("21.1.233", "1.21.1").install(game)
+```
+
+</details>
+
+<details>
+<summary><b>Find a Java runtime</b></summary>
+
+```python
+ms.minecraft.install_version(game, "1.21.1")
+
+component = ms.java.required_for(game.version("1.21.1"), game)
+runtime = ms.java.find(component, game=game) or ms.java.download(component)
+print(runtime.executable)
+```
+
+</details>
+
+<details>
+<summary><b>Show progress and cancel</b></summary>
+
+Long-running calls accept `progress=` and `cancel=`, so they are easy to connect to a GUI.
+
+```python
+token = ms.CancelToken()  # call token.cancel() from any thread
+
+
+def show(event: ms.Progress) -> None:
+    print(f"{event.task}: {event.current}/{event.total} {event.unit}")
+
+
+instance.sync(pack, progress=show, cancel=token)
+```
+
+</details>
+
+<details>
+<summary><b>Handle errors</b></summary>
+
+Every error derives from `ModsmithError`.
+
+```python
+from modsmith.errors import ModsmithError
+
+try:
+    instance.sync(pack)
+except ModsmithError as error:
+    print(f"Sync failed: {error}")
+```
+
+</details>
+
+## How it fits together
+
+Platforms, pack formats and mod loaders are independent, and you can add your own.
+
+```mermaid
+flowchart LR
+    platforms["<b>platforms</b><br>Modrinth · CurseForge"] -- fetch --> archive[/"Modpack archive"/]
+    archive -- load --> packs["<b>packs</b><br>Modpack"]
+    platforms -. resolve .-> packs
+    packs -- loader --> loaders["<b>loaders</b><br>Forge · NeoForge<br>Fabric · Quilt"]
+    packs -- sync --> instances["<b>instances</b><br>Instance"]
+    loaders --> minecraft["<b>minecraft</b><br>GameDir"]
+    loaders --> java["<b>java</b><br>JavaRuntime"]
+    instances --> launcher["<b>launcher</b><br>Launcher profile"]
+    minecraft --> launcher
+```
 
 | Module | Provides |
 | :--- | :--- |
-| `modsmith.platforms` | `Modrinth`, `CurseForge`, and the `Platform` base class |
-| `modsmith.packs` | `load()`, `Modpack`, the mrpack and CurseForge formats |
-| `modsmith.loaders` | `Forge`, `NeoForge`, `Fabric`, `Quilt`, and the `Loader` base class |
-| `modsmith.instances` | `Instance` with `diff()` and `sync()` |
-| `modsmith.minecraft` | `GameDir`, `Version`, vanilla version downloads |
-| `modsmith.java` | Find official launcher runtimes or download Mojang's |
-| `modsmith.launcher` | Read and change launcher profiles |
-| `modsmith.net` | `Resource`, `Session`, verified and resumable `download()` |
+| `modsmith.platforms` | `Modrinth`, `CurseForge` and the `Platform` base class |
+| `modsmith.packs` | `load()`, `Modpack`, and the mrpack and CurseForge formats |
+| `modsmith.loaders` | `Forge`, `NeoForge`, `Fabric`, `Quilt` and the `Loader` base class |
+| `modsmith.instances` | `Instance`, with `diff()` and `sync()` |
+| `modsmith.minecraft` | `GameDir`, `Version` and vanilla version downloads |
+| `modsmith.java` | Runtime lookup and Mojang runtime downloads |
+| `modsmith.launcher` | Official launcher profiles |
+| `modsmith.net` | `Session`, `Resource` and `download()` |
+| `modsmith.errors` | `ModsmithError` and its subclasses |
 
-Long-running calls accept `progress=` and `cancel=`. Errors derive from `modsmith.errors.ModsmithError`.
+## Compatibility
 
-## Development
+| | Supported |
+| :--- | :--- |
+| Python | 3.12 and later |
+| Operating systems | Windows, macOS and Linux |
+| Platforms | Modrinth and CurseForge |
+| Modpack formats | `.mrpack` and CurseForge `.zip` |
+| Launcher | Official Minecraft Launcher, including the Microsoft Store version |
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, checks and how the tests are organised.
+| Loader | Minecraft versions |
+| :--- | :--- |
+| Forge | 1.13.2 and later |
+| NeoForge | 1.20.1 and later |
+| Fabric | 1.14 and later |
+| Quilt | 1.14.4 and later |
+
+## Scope and status
+
+Modsmith works alongside the official launcher. It does not sign in to accounts or start the game.
+
+The project is in alpha, so the API may change. No automated test starts the game yet. A command-line tool and a desktop app are planned.
+
+## Contributing
+
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
 
 ## License
 
-[MIT](LICENSE)
+Modsmith is released under the [MIT License](LICENSE). It is not affiliated with Mojang, Microsoft, Modrinth or CurseForge.
