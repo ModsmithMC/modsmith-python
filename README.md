@@ -26,34 +26,34 @@ Modsmith is a library, not a launcher. Its small modules work together or alone,
 <table>
   <tr>
     <td width="33%" valign="top">
-      <img src="docs/assets/icons/search.svg" alt="" width="26" height="26">
+      <img src="docs/assets/pixel/search.svg" alt="" width="24" height="24">
       <h4>Two platforms, one API</h4>
       Search and download from Modrinth and CurseForge the same way.
     </td>
     <td width="33%" valign="top">
-      <img src="docs/assets/icons/package.svg" alt="" width="26" height="26">
+      <img src="docs/assets/pixel/package.svg" alt="" width="24" height="24">
       <h4>Modpacks, even offline</h4>
       Open Modrinth and CurseForge packs without a network connection.
     </td>
     <td width="33%" valign="top">
-      <img src="docs/assets/icons/layers.svg" alt="" width="26" height="26">
+      <img src="docs/assets/pixel/layers.svg" alt="" width="24" height="24">
       <h4>Four mod loaders</h4>
       Install Forge, NeoForge, Fabric and Quilt with one call.
     </td>
   </tr>
   <tr>
     <td valign="top">
-      <img src="docs/assets/icons/refresh.svg" alt="" width="26" height="26">
+      <img src="docs/assets/pixel/refresh.svg" alt="" width="24" height="24">
       <h4>Safe updates</h4>
       Update a modpack and keep the changes players made.
     </td>
     <td valign="top">
-      <img src="docs/assets/icons/cup.svg" alt="" width="26" height="26">
+      <img src="docs/assets/pixel/cup.svg" alt="" width="24" height="24">
       <h4>The right Java</h4>
       Find the Java that a game version needs, or download it.
     </td>
     <td valign="top">
-      <img src="docs/assets/icons/shield.svg" alt="" width="26" height="26">
+      <img src="docs/assets/pixel/shield.svg" alt="" width="24" height="24">
       <h4>Reliable downloads</h4>
       Files are verified, and interrupted downloads pick up where they stopped.
     </td>
