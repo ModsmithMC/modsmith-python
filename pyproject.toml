@@ -8,8 +8,6 @@ requires-python = ">=3.12"
 dependencies = [
     "platformdirs>=4.3",
     "requests>=2.34.2",
-    "tenacity>=9.1.4",
-    "tqdm>=4.68.3",
 ]
 
 [dependency-groups]
@@ -34,6 +32,9 @@ addopts = "-q"
 line-length = 88
 target-version = "py312"
 src = ["src", "tests"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["cursecraft", "conftest"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
