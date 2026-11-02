@@ -547,9 +547,17 @@ body.page .content {
   color: var(--text);
 }
 
+.footer-links {
+  display: flex;
+  flex: none;
+  gap: 4px;
+}
+
 .footer-icon svg {
   width: 20px;
   height: 20px;
+  fill: currentColor;
+  stroke: none;
 }
 
 .site-sidebar,

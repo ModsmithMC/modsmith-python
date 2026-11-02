@@ -15,8 +15,8 @@ import modsmith
 
 project = "Modsmith"
 release = modsmith.__version__
-author = "YufengPeng"
-copyright = "2026 YufengPeng"
+author = "MeNeither"
+copyright = "2026 MeNeither"
 
 extensions = [
     "myst_parser",
