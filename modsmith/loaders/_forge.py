@@ -7,17 +7,25 @@ from abc import abstractmethod
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, Self
 
 from .. import java as java_runtime
 from .._locks import GAME_LOCK, file_lock
 from .._paths import default_cache_dir
 from ..errors import JavaError, LoaderError, NetworkError, ProcessorError
-from ..minecraft import GameDir, install_version
+from ..minecraft import GameDir, Version, install_version
 from ..net import Resource, Session, download
 from ..net._session import session_scope
 from ..progress import CancelToken, ProgressCallback
-from ._base import Loader, LoaderVersion, is_stable, recommend, register
+from ._base import (
+    Loader,
+    LoaderVersion,
+    game_argument,
+    is_stable,
+    library_versions,
+    recommend,
+    register,
+)
 from ._install_profile import InstallerJar, Library, Variables
 from ._processors import run_processors
 
@@ -26,6 +34,8 @@ LEGACY_NEOFORGE = "1.20.1"
 FORGE_PROMOTIONS = (
     "https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json"
 )
+# Every NeoForge library is published under this Maven group.
+NEOFORGE_GROUP = "net.neoforged"
 
 
 def maven_versions(session: Session, url: str) -> list[str]:
@@ -361,6 +371,21 @@ class Forge(ProcessorLoader):
         ]
         return recommend(found, promotions.get(f"{minecraft}-recommended"))
 
+    @classmethod
+    def from_version(cls, version: Version, minecraft: str) -> Self | None:
+        """Recognise Forge by the version it passes the game, or its library.
+
+        NeoForge for 1.20.1 started as a copy of Forge and passes the same
+        argument, so a version with NeoForge's libraries is left to NeoForge.
+        """
+        libraries = library_versions(version)
+        if any(name.startswith(NEOFORGE_GROUP) for name in libraries):
+            return None
+        found = game_argument(version, "--fml.forgeVersion") or libraries.get(
+            "net.minecraftforge:forge"
+        )
+        return cls(found.removeprefix(f"{minecraft}-"), minecraft) if found else None
+
     def expected_id(self) -> str:
         """Return the version id that this version's installer declares."""
         return f"{self.minecraft}-forge-{self.version}"
@@ -382,6 +407,17 @@ class NeoForge(ProcessorLoader):
 
     kind: ClassVar[str] = "neoforge"
     repository: str = "https://maven.neoforged.net/releases"
+
+    @classmethod
+    def from_version(cls, version: Version, minecraft: str) -> Self | None:
+        """Recognise NeoForge by the version it passes the game, or its library."""
+        found = game_argument(version, "--fml.neoForgeVersion")
+        libraries = library_versions(version)
+        if found is None and any(name.startswith(NEOFORGE_GROUP) for name in libraries):
+            found = game_argument(version, "--fml.forgeVersion") or libraries.get(
+                "net.neoforged:forge"
+            )
+        return cls(found.removeprefix(f"{minecraft}-"), minecraft) if found else None
 
     @classmethod
     def available(

@@ -46,6 +46,7 @@ def test_install_meta_loader(tmp_path, loader):
     version_id = loader.install(game)
     assert game.has_version(version_id)
     assert loader.expected_id() == version_id
+    assert ms.loaders.detect(game, version_id) == loader
     assert_libraries_present(game, version_id)
 
 
@@ -55,6 +56,7 @@ def test_install_processor_loader(tmp_path, loader):
     version_id = loader.install(game, cache_dir=tmp_path / "cache")
     assert game.has_version(version_id)
     assert loader.expected_id() == version_id
+    assert ms.loaders.detect(game, version_id) == loader
     assert_libraries_present(game, version_id)
 
 

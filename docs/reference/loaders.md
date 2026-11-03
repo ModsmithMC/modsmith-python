@@ -42,6 +42,16 @@ Install mod loaders.
    parse
 ```
 
+## Recognise an installed version
+
+```{eval-rst}
+.. autosummary::
+   :toctree: loaders
+   :nosignatures:
+
+   detect
+```
+
 ## Add a loader
 
 ```{eval-rst}

@@ -45,6 +45,7 @@ PUBLIC = {
         "ProcessorLoader",
         "Quilt",
         "create",
+        "detect",
         "parse",
         "recommended",
         "register",

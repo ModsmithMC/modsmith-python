@@ -3,15 +3,22 @@
 from abc import abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Self
 
 from .._locks import GAME_LOCK, file_lock
 from ..errors import NetworkError
-from ..minecraft import GameDir, install_version, maven_path
+from ..minecraft import GameDir, Version, install_version, maven_path
 from ..net import Resource, Session, download
 from ..net._session import session_scope
 from ..progress import CancelToken, ProgressCallback
-from ._base import Loader, LoaderVersion, is_stable, recommend, register
+from ._base import (
+    Loader,
+    LoaderVersion,
+    is_stable,
+    library_versions,
+    recommend,
+    register,
+)
 
 HASH_FIELDS = ("sha512", "sha256", "sha1", "md5")
 # The metadata services answer these for a Minecraft version they do not know.
@@ -25,10 +32,18 @@ class MetaLoader(Loader):
     Attributes:
         meta_url: The service's base URL.
         default_maven: The repository for libraries that do not name one.
+        library: The loader's own library, as ``group:artifact``.
     """
 
     meta_url: str = ""
     default_maven: ClassVar[str]
+    library: ClassVar[str]
+
+    @classmethod
+    def from_version(cls, version: Version, minecraft: str) -> Self | None:
+        """Recognise the loader by its own library on the class path."""
+        found = library_versions(version).get(cls.library)
+        return cls(found, minecraft) if found else None
 
     @abstractmethod
     def profile_url(self) -> str:
@@ -195,6 +210,7 @@ class Fabric(MetaLoader):
     """
 
     kind: ClassVar[str] = "fabric"
+    library: ClassVar[str] = "net.fabricmc:fabric-loader"
     default_maven: ClassVar[str] = "https://maven.fabricmc.net/"
     meta_url: str = "https://meta.fabricmc.net/v2"
 
@@ -213,6 +229,7 @@ class Quilt(MetaLoader):
     """
 
     kind: ClassVar[str] = "quilt"
+    library: ClassVar[str] = "org.quiltmc:quilt-loader"
     default_maven: ClassVar[str] = "https://maven.quiltmc.org/repository/release/"
     meta_url: str = "https://meta.quiltmc.org/v3"
 

@@ -4,7 +4,7 @@ Platforms, pack formats and mod loaders each have a base class, so you can add y
 
 ## Add a mod loader
 
-Subclass `Loader`, or `MetaLoader` if the loader publishes a Fabric-style version JSON, and register it. `create` can then find it by name, and packs that use it work like any other. Implement `Loader.available` too, and `versions` and `recommended` will offer its versions.
+Subclass `Loader`, or `MetaLoader` if the loader publishes a Fabric-style version JSON, and register it. `create` can then find it by name, and packs that use it work like any other. Implement `Loader.available` too, and `versions` and `recommended` will offer its versions. Implement `Loader.from_version`, and `detect` will recognise it in installed versions.
 
 ```python
 from dataclasses import dataclass
