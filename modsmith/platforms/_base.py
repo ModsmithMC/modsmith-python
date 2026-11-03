@@ -137,6 +137,9 @@ class Release:
         loaders: The mod loaders it supports.
         files: The files it contains.
         dependencies: What it needs, works with or conflicts with.
+        version: The version label its author gave, such as ``0.6.0`` or
+            ``mc1.21.1-0.6.0-fabric``, or None if the platform has none, as
+            CurseForge does not.
     """
 
     platform: str
@@ -149,6 +152,7 @@ class Release:
     loaders: tuple[str, ...] = ()
     files: tuple[ReleaseFile, ...] = ()
     dependencies: tuple[Dependency, ...] = ()
+    version: str | None = None
 
     @property
     def primary_file(self) -> ReleaseFile:
@@ -416,6 +420,22 @@ class Platform(ABC):
             NetworkError: The platform could not be reached.
         """
         raise UnsupportedError(f"{self.name} cannot look up release {release_id}")
+
+    def changelog(self, release: Release) -> str:
+        """Return what changed in a release, as plain text.
+
+        Args:
+            release: The release, from this platform.
+
+        Returns:
+            The changelog, or an empty string if the author wrote none.
+
+        Raises:
+            UnsupportedError: This platform cannot fetch changelogs. That is
+                the default.
+            NetworkError: The platform could not be reached.
+        """
+        raise UnsupportedError(f"{self.name} cannot fetch changelogs")
 
     def identify(
         self,

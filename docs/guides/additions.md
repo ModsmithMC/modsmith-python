@@ -71,6 +71,15 @@ with ms.platforms.Modrinth("my-tool/1.0") as modrinth:
 
 `plan_updates` looks for newer releases of every addition from that platform. Additions that no longer have a release for the instance's versions are listed in `updates.unavailable`.
 
+To show what each update changes before installing it, read the changelogs of the new releases:
+
+```python
+with ms.platforms.Modrinth("my-tool/1.0") as modrinth:
+    for release in updates.resolution.releases:
+        print(release.name)
+        print(modrinth.changelog(release)[:200])
+```
+
 Pin an addition to keep it at its release:
 
 ```python

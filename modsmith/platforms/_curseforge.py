@@ -1,7 +1,9 @@
 """The CurseForge platform."""
 
 import dataclasses
+import re
 from collections.abc import Iterable, Iterator
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, ClassVar, Literal
 
@@ -78,6 +80,64 @@ SORT_FIELDS: dict[str, int] = {
 SEARCH_PAGE = 50
 # CurseForge refuses to page past this many results.
 SEARCH_REACH = 10_000
+
+
+# HTML tags that start a new line in plain text.
+BLOCK_TAGS = frozenset(
+    {
+        "br",
+        "div",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "hr",
+        "ol",
+        "p",
+        "pre",
+        "tr",
+        "ul",
+    }
+)
+
+
+class _PlainText(HTMLParser):
+    """Collects an HTML fragment's text, keeping its line structure."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.parts: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        """Start a line, or a list item, where the tag begins one."""
+        if tag == "li":
+            self.parts.append("\n- ")
+        elif tag in BLOCK_TAGS:
+            self.parts.append("\n")
+
+    def handle_endtag(self, tag: str) -> None:
+        """End the line where a block ends."""
+        if tag in BLOCK_TAGS or tag == "li":
+            self.parts.append("\n")
+
+    def handle_data(self, data: str) -> None:
+        """Keep text, with HTML's whitespace rules: any run of it is one space."""
+        self.parts.append(re.sub(r"\s+", " ", data))
+
+
+def html_to_text(html: str) -> str:
+    """Turn a changelog's HTML into plain text, with lists as ``-`` lines."""
+    parser = _PlainText()
+    parser.feed(html)
+    parser.close()
+    lines: list[str] = []
+    for raw in "".join(parser.parts).splitlines():
+        line = " ".join(raw.split())
+        if line or (lines and lines[-1]):
+            lines.append(line)
+    return "\n".join(lines).strip()
 
 
 def split_versions(labels: Iterable[str]) -> tuple[tuple[str, ...], tuple[str, ...]]:
@@ -339,6 +399,22 @@ class CurseForge(Platform):
             return [mod.to_project(self.name, project_type) for mod in mods], total
 
         return collect_pages(page, offset, limit, SEARCH_PAGE, SEARCH_REACH)
+
+    def changelog(self, release: Release) -> str:
+        """Return what changed in a release, converted from CurseForge's HTML.
+
+        Args:
+            release: The release.
+
+        Returns:
+            The changelog as plain text, with list items as ``-`` lines, or an
+            empty string if there is none.
+
+        Raises:
+            NetworkError: CurseForge could not be reached or does not know it.
+        """
+        path = f"/v1/mods/{release.project_id}/files/{release.id}/changelog"
+        return html_to_text(str(self._get(path).get("data") or ""))
 
     def get_projects(
         self, ids: Iterable[str], *, project_type: ProjectType = "mod"
