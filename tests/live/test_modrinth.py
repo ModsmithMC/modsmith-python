@@ -265,3 +265,11 @@ def test_releases_carry_a_version_label_and_a_changelog(modrinth):
     release = next(modrinth.iter_releases(modrinth.get_project(LARGE_PROJECT)))
     assert release.version
     assert modrinth.changelog(release)
+
+
+def test_authors_come_from_the_team(modrinth):
+    project = modrinth.get_project("fabric-api", project_type="mod")
+    assert project.author is None
+    authors = modrinth.authors(project)
+    assert authors[0] == "modmuss50"
+    assert len(authors) == len(set(authors)) > 1

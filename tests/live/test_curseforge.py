@@ -265,3 +265,9 @@ def test_changelogs_are_plain_text(curseforge):
     assert text
     # Text may hold angle brackets, as in an email address, but no tags.
     assert not re.search(r"</?(a|br|div|h[1-6]|li|p|ul)", text)
+
+
+def test_authors_are_all_listed(curseforge):
+    project = curseforge.get_project("jei", project_type="mod")
+    authors = curseforge.authors(project)
+    assert authors[0] == project.author == "mezz"

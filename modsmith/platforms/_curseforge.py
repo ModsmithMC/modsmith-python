@@ -400,6 +400,21 @@ class CurseForge(Platform):
 
         return collect_pages(page, offset, limit, SEARCH_PAGE, SEARCH_REACH)
 
+    def authors(self, project: Project) -> tuple[str, ...]:
+        """Return every author CurseForge lists for a project, in its order.
+
+        Args:
+            project: The project.
+
+        Returns:
+            Their names.
+
+        Raises:
+            NetworkError: CurseForge could not be reached or does not know it.
+        """
+        mod = _Mod.model_validate(self._get(f"/v1/mods/{project.id}")["data"])
+        return tuple(dict.fromkeys(item.name for item in mod.authors))
+
     def changelog(self, release: Release) -> str:
         """Return what changed in a release, converted from CurseForge's HTML.
 

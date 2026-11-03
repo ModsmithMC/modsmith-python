@@ -421,6 +421,25 @@ class Platform(ABC):
         """
         raise UnsupportedError(f"{self.name} cannot look up release {release_id}")
 
+    def authors(self, project: Project) -> tuple[str, ...]:
+        """Return the names of the people behind a project, the owner first.
+
+        Project lookups do not always say who made a project. Modrinth's give no
+        author, so this asks the platform separately. Call it where the authors
+        are shown, not for every project.
+
+        Args:
+            project: The project, from this platform.
+
+        Returns:
+            The names, empty if the platform names nobody. By default, the
+            project's own ``author``.
+
+        Raises:
+            NetworkError: The platform could not be reached.
+        """
+        return (project.author,) if project.author else ()
+
     def changelog(self, release: Release) -> str:
         """Return what changed in a release, as plain text.
 

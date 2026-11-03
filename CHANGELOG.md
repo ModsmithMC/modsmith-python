@@ -15,6 +15,8 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   platform serves at once; the extra pages are read for you.
 - `Project` gains `author`, `categories`, `updated`, `follows` and
   `game_versions`, filled the same way on both platforms.
+- `Platform.authors` returns the people behind a project, the owner first. It
+  fills the gap left by Modrinth project lookups, which name no author.
 - `Platform.get_projects` looks up many projects at once. `Instance.plan`,
   `Instance.plan_updates` and `Instance.adopt` use it, so they need far fewer
   requests.

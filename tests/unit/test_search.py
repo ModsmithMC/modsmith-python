@@ -83,3 +83,10 @@ def test_both_platforms_know_every_sort(sort):
 
     assert sort in SORT_FIELDS
     assert sort in SORT_INDEXES
+
+
+def test_authors_default_to_the_projects_own():
+    catalog = Catalog()
+    named = Project("modrinth", "a", "a", "A", author="Someone")
+    assert catalog.authors(named) == ("Someone",)
+    assert catalog.authors(Project("modrinth", "b", "b", "B")) == ()

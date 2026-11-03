@@ -53,7 +53,7 @@ for project in popular.projects[:3]:
     print(project.name, project.author, project.updated[:10], project.game_versions[:3])
 ```
 
-`author` is `None` for projects looked up with `get_project` on Modrinth, which does not say who made them there. `get_projects` looks up many projects at once, in as few requests as each platform allows.
+`author` is `None` for projects looked up with `get_project` on Modrinth, which does not say who made them there; see [](#look-up-a-project) for how to ask. `get_projects` looks up many projects at once, in as few requests as each platform allows.
 
 ## Look up a project
 
@@ -66,6 +66,14 @@ project = modrinth.get_project("sodium", project_type="mod")
 :::{tip}
 A slug can change. Store `project.id` if you need to find the project again later.
 :::
+
+To show who made a project, ask for its authors. This costs one more request on each platform, so do it where the names are shown, such as a project's page, not for every project in a list:
+
+```python
+print(", ".join(modrinth.authors(project)))  # IMS, jellysquid3, douira
+```
+
+On Modrinth these are the members of the project's team, the owner first. On CurseForge they are the authors it lists.
 
 ## Choose a release
 
