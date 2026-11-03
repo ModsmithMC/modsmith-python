@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/PaPa-jun/Modsmith/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/PaPa-jun/Modsmith/ci.yml?branch=main&style=flat-square&label=CI&logo=github" alt="CI"></a>
+  <a href="https://github.com/ModsmithMC/modsmith-python/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/ModsmithMC/modsmith-python/ci.yml?branch=main&style=flat-square&label=CI&logo=github" alt="CI"></a>
   <a href="https://pypi.org/project/modsmith/"><img src="https://img.shields.io/pypi/v/modsmith?style=flat-square&color=3c8527" alt="PyPI"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.12%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.12+"></a>
   <a href="https://microsoft.github.io/pyright/"><img src="https://img.shields.io/badge/types-pyright%20strict-2F74C0?style=flat-square" alt="Pyright strict"></a>
@@ -17,12 +17,12 @@
 </p>
 
 <p align="center">
-  <a href="https://modsmith.meneither.site/">Documentation</a> · <strong>English</strong> · <a href="README_ZH.md">简体中文</a>
+  <a href="https://modsmith.meneither.site/modsmith-python/">Documentation</a> · <strong>English</strong> · <a href="README_ZH.md">简体中文</a>
 </p>
 
 ---
 
-Modsmith is a library, not a launcher. Its small modules work together or alone, so you can build your own modpack installer, updater, CLI or GUI.
+Modsmith is a library, not a launcher. Its small modules work together or alone, so you can build your own modpack installer, updater, CLI or GUI. To install modpacks yourself, use [Modsmith](https://github.com/ModsmithMC/modsmith), the command line built on it.
 
 <table>
   <tr>

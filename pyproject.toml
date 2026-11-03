@@ -29,10 +29,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/PaPa-jun/Modsmith"
-Documentation = "https://modsmith.meneither.site/"
-Issues = "https://github.com/PaPa-jun/Modsmith/issues"
-Changelog = "https://github.com/PaPa-jun/Modsmith/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/ModsmithMC/modsmith-python"
+Documentation = "https://modsmith.meneither.site/modsmith-python/"
+Issues = "https://github.com/ModsmithMC/modsmith-python/issues"
+Changelog = "https://github.com/ModsmithMC/modsmith-python/blob/main/CHANGELOG.md"
 
 [dependency-groups]
 test = [
@@ -55,9 +55,14 @@ dev = [
     { include-group = "typing" },
 ]
 docs = [
+    "modsmith-sphinx-theme",
     "myst-parser>=5.1.0",
     "sphinx>=9.1.1",
 ]
+
+[tool.uv.sources]
+# The theme of all of Modsmith's sites, kept with the home page.
+modsmith-sphinx-theme = { git = "https://github.com/ModsmithMC/modsmithmc.github.io", subdirectory = "theme" }
 
 [build-system]
 requires = ["hatchling", "hatch-fancy-pypi-readme"]
@@ -75,15 +80,15 @@ path = "README.md"
 # PyPI cannot follow relative links or render Mermaid.
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
 pattern = 'src="(docs/[^"]+)"'
-replacement = 'src="https://raw.githubusercontent.com/PaPa-jun/Modsmith/main/\1"'
+replacement = 'src="https://raw.githubusercontent.com/ModsmithMC/modsmith-python/main/\1"'
 
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
 pattern = 'href="(?!https?://)([^"]+)"'
-replacement = 'href="https://github.com/PaPa-jun/Modsmith/blob/main/\1"'
+replacement = 'href="https://github.com/ModsmithMC/modsmith-python/blob/main/\1"'
 
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
 pattern = '\]\((?!https?://)([^)]+)\)'
-replacement = '](https://github.com/PaPa-jun/Modsmith/blob/main/\1)'
+replacement = '](https://github.com/ModsmithMC/modsmith-python/blob/main/\1)'
 
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
 pattern = '```mermaid[\s\S]*?```\n\n'

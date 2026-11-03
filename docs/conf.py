@@ -3,7 +3,6 @@
 import dataclasses
 import inspect
 import re
-from pathlib import Path
 from urllib.parse import urljoin
 
 from pygments.lexers.python import PythonLexer
@@ -25,15 +24,17 @@ extensions = [
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
+    "modsmith_sphinx_theme",
 ]
-exclude_patterns = ["_build", "_templates", "_theme", "assets"]
+exclude_patterns = ["_build", "_templates", "assets"]
 
 html_theme = "modsmith"
-html_theme_path = ["_theme"]
 html_title = project
-html_baseurl = "https://modsmith.meneither.site/"
-html_additional_pages = {"404": "404.html"}
-html_theme_options = {"base_url": html_baseurl, "repository": "PaPa-jun/Modsmith"}
+html_baseurl = "https://modsmith.meneither.site/modsmith-python/"
+html_theme_options = {
+    "base_url": html_baseurl,
+    "repository": "ModsmithMC/modsmith-python",
+}
 html_favicon = "assets/logo.svg"
 html_static_path = ["assets"]
 html_permalinks_icon = "#"
@@ -64,7 +65,7 @@ napoleon_numpy_docstring = False
 python_use_unqualified_type_names = True
 doctest_global_setup = "from modsmith.minecraft import maven_path"
 
-SECTIONS = {
+modsmith_sections = {
     "get-started": "Get started",
     "guides": "Guides",
     "concepts": "Concepts",
@@ -180,7 +181,9 @@ autosummary_filename_map = {
 }
 
 
-def add_object_kinds(app: Sphinx, pagename: str, context: dict) -> None:
+def add_object_kinds(
+    app: Sphinx, pagename: str, templatename: str, context: dict, doctree
+) -> None:
     """Mark links to reference pages, and each page's title, with the object's kind."""
     objects = app.env.get_domain("py").objects  # type: ignore[attr-defined]
 
@@ -205,23 +208,6 @@ def add_object_kinds(app: Sphinx, pagename: str, context: dict) -> None:
         )
 
 
-def add_section_navigation(app, pagename, templatename, context, doctree) -> None:
-    """Give each page the sidebar of its own section."""
-    section = pagename.split("/")[0]
-    context["section"] = section
-    context["sections"] = SECTIONS
-    context["section_title"] = SECTIONS.get(section, "")
-    context["section_nav"] = ""
-    if section in SECTIONS and "toctree" in context:
-        tree = context["toctree"](
-            maxdepth=3, collapse=True, includehidden=True, titles_only=True
-        )
-        for part in re.split(r'(?=<p class="caption")', tree):
-            if f">{SECTIONS[section]}<" in part:
-                context["section_nav"] = part
-    add_object_kinds(app, pagename, context)
-
-
 def show_default_factories(
     app: Sphinx, what, name, obj, options, signature, return_annotation
 ) -> tuple[str, str | None] | None:
@@ -238,18 +224,10 @@ def show_default_factories(
     return signature, return_annotation
 
 
-def publish_not_found_page(app: Sphinx, exception: Exception | None) -> None:
-    """Copy the 404 page to the site root, where GitHub Pages looks for it."""
-    page = Path(app.outdir, "404", "index.html")
-    if exception is None and page.is_file():
-        text = page.read_text(encoding="utf-8").replace('="../', '="')
-        Path(app.outdir, "404.html").write_text(text, encoding="utf-8")
-
-
 def setup(app: Sphinx) -> None:
     """Register the build hooks."""
     app.add_lexer("python", ModsmithLexer)
     app.connect("missing-reference", resolve_short_name)
-    app.connect("html-page-context", add_section_navigation)
-    app.connect("build-finished", publish_not_found_page)
+    # After the theme has built the section's sidebar, which this marks up too.
+    app.connect("html-page-context", add_object_kinds, priority=600)
     app.connect("autodoc-process-signature", show_default_factories)

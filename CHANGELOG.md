@@ -6,6 +6,15 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- The project moved to the ModsmithMC organization, as
+  [ModsmithMC/modsmith-python](https://github.com/ModsmithMC/modsmith-python),
+  and its documentation to
+  [modsmith.meneither.site/modsmith-python](https://modsmith.meneither.site/modsmith-python/).
+  Old addresses lead to the new ones. The default user agent names the new
+  repository.
+
 ## [0.3.5] - 2026-11-03
 
 ### Added
