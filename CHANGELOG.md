@@ -34,6 +34,8 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - `Modpack.loader_kind`, `Modpack.loader_version` and `Modpack.loader` are None
   for a pack that needs no mod loader.
+- `Modpack.loader_kind` uses the name platforms and instances use, such as
+  `fabric` for a pack that says `fabric-loader`.
 
 ### Removed
 

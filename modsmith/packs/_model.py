@@ -10,6 +10,7 @@ from typing import IO, Literal
 from .._fs import write_atomic
 from ..errors import PackError
 from ..loaders import Loader, create
+from ..loaders._base import loader_name
 from ..minecraft import GameDir, install_version
 from ..net import Resource, Session
 from ..progress import CancelToken, ProgressCallback
@@ -124,7 +125,9 @@ class Modpack:
         name: The pack's name.
         version: The pack's version.
         minecraft: The Minecraft version it needs.
-        loader_kind: The mod loader's name, or None for a vanilla pack.
+        loader_kind: The mod loader's name as platforms use it, such as
+            ``fabric`` for a pack that says ``fabric-loader``, or None for a
+            vanilla pack.
         loader_version: The mod loader's version, or None for a vanilla pack.
         entries: The files it needs.
         archive: The archive it was read from.
@@ -145,6 +148,11 @@ class Modpack:
         default_factory=dict[str, str], hash=False
     )
     memory_mb: int | None = None
+
+    def __post_init__(self) -> None:
+        # Formats name loaders differently; instances and platforms use one name.
+        if self.loader_kind is not None:
+            object.__setattr__(self, "loader_kind", loader_name(self.loader_kind))
 
     @property
     def loader(self) -> Loader | None:
