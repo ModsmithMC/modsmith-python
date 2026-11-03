@@ -261,10 +261,9 @@ def test_failed_update_leaves_the_instance_untouched(
     instance.sync(new, session=session)
     assert (instance.path / "mods" / "new.jar").read_bytes() == b"new"
     assert not (instance.path / "mods" / "old.jar").exists()
-    assert sorted(path.name for path in (instance.path / ".modsmith").iterdir()) == [
-        "hashes.json",
-        "instance.json",
-    ]
+    # The lock file stays on Unix and is deleted on Windows.
+    left = {path.name for path in (instance.path / ".modsmith").iterdir()}
+    assert left - {"lock"} == {"hashes.json", "instance.json"}
 
 
 def test_failed_commit_puts_everything_back(session, instance, tmp_path):

@@ -22,7 +22,7 @@ def test_held_lock_fails_at_once_without_a_wait(tmp_path):
 def test_wait_ends_when_the_holder_leaves(tmp_path):
     path = tmp_path / "lock"
     with held_elsewhere(path) as holder:
-        threading.Timer(0.2, holder.communicate).start()
+        holder.release_later(0.2)
         with file_lock(path, wait=30):
             pass
 
@@ -48,8 +48,8 @@ def test_cancel_stops_the_wait(tmp_path):
 def test_lock_is_released_when_the_holder_dies(tmp_path):
     path = tmp_path / "lock"
     with held_elsewhere(path) as holder:
-        holder.kill()
-        holder.wait()
+        holder.process.kill()
+        holder.process.wait()
         with file_lock(path, wait=5):
             pass
 

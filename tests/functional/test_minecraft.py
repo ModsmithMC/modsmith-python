@@ -84,6 +84,6 @@ def test_install_waits_for_the_game_directory(server, session, game):
     assert not game.has_version("1.21.1")
 
     with held_elsewhere(game.path / GAME_LOCK) as holder:
-        threading.Timer(0.2, holder.communicate).start()
+        holder.release_later(0.2)
         install_version(game, "1.21.1", session=session, manifest_url=manifest)
     assert game.has_version("1.21.1")
