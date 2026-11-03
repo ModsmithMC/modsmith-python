@@ -217,3 +217,16 @@ def test_add_a_mod_with_its_dependencies(curseforge, tmp_path):
 def test_search_puts_the_best_match_first(curseforge):
     results = curseforge.search("jei", project_type="mod", limit=3)
     assert results.projects[0].id == str(JEI)
+
+
+def test_releases_separate_game_versions_from_loaders(curseforge):
+    project = curseforge.get_project(SMALL_MOD, project_type="mod")
+    release = next(curseforge.iter_releases(project, loader="fabric"))
+    assert release.loaders
+    assert set(release.loaders) <= {"forge", "neoforge", "fabric", "quilt"}
+    assert all(version[0].isdigit() for version in release.game_versions)
+
+
+def test_a_slug_is_found_whatever_kind_was_asked_for(curseforge):
+    project = curseforge.get_project("faithful-32x", project_type="mod")
+    assert project.project_type == "resourcepack"

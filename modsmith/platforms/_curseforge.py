@@ -1,6 +1,7 @@
 """The CurseForge platform."""
 
 import dataclasses
+import re
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import Any, ClassVar, Literal
@@ -64,6 +65,24 @@ CLASS_FOLDERS = {
 LOADER_TYPES = {"forge": 1, "fabric": 4, "quilt": 5, "neoforge": 6}
 # Without a sort field, search results come back in no useful order.
 SORT_BY_POPULARITY = 2
+# A game version such as 1.21.1 or 26.3, among labels such as Client or Forge.
+GAME_VERSION = re.compile(r"^\d+(\.\d+)+$")
+
+
+def split_versions(labels: Iterable[str]) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Split a file's version labels into game versions and mod loaders.
+
+    CurseForge puts both in one list, along with labels such as ``Client``,
+    ``Server`` and ``Beta 1.7.3``, which are left out.
+
+    Returns:
+        The game versions, and the loaders under the names the rest of the
+        library uses, such as ``neoforge``.
+    """
+    labels = list(labels)
+    games = tuple(label for label in labels if GAME_VERSION.match(label))
+    loaders = (label.lower() for label in labels if label.lower() in LOADER_TYPES)
+    return games, tuple(dict.fromkeys(loaders))
 
 
 class _Schema(BaseModel):
@@ -117,6 +136,7 @@ class _File(_Schema):
     def to_release(self, platform: str) -> Release:
         """Convert this file to a `Release`."""
         urls = (self.download_url,) if self.download_url else ()
+        games, loaders = split_versions(self.game_versions)
         return Release(
             platform=platform,
             id=str(self.id),
@@ -124,7 +144,8 @@ class _File(_Schema):
             name=self.display_name or self.file_name,
             release_type=RELEASE_TYPES[self.release_type],
             published=self.file_date,
-            game_versions=tuple(self.game_versions),
+            game_versions=games,
+            loaders=loaders,
             files=(ReleaseFile(self.file_name, urls, self.hash_map, self.file_length),),
             dependencies=tuple(
                 Dependency(RELATION_KINDS[item.relation_type], str(item.mod_id))
@@ -281,7 +302,8 @@ class CurseForge(Platform):
 
         Args:
             ref: The project's id, slug or web address.
-            project_type: The kind of project. Slugs are only unique within a type.
+            project_type: The kind of project to look for first. A slug that
+                belongs to another kind is still found.
 
         Returns:
             The project. Its type is the one CurseForge reports, when known.
@@ -296,7 +318,10 @@ class CurseForge(Platform):
             return mod.to_project(self.name, project_type)
         data = self._search(project_type, slug=text, pageSize=1)
         if not data["data"]:
-            raise PlatformError(f"No CurseForge {project_type} found for {ref}")
+            # A slug may belong to another kind of project than the one asked for.
+            data = self._get("/v1/mods/search", gameId=GAME_ID, slug=text, pageSize=1)
+        if not data["data"]:
+            raise PlatformError(f"No CurseForge project found for {ref}")
         return _Mod.model_validate(data["data"][0]).to_project(self.name, project_type)
 
     def iter_releases(
