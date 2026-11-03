@@ -146,10 +146,22 @@ def test_curseforge_uses_declared_overrides_dir(tmp_path):
     assert [path for path, _ in pack.iter_overrides()] == ["a.txt"]
 
 
-def test_curseforge_requires_loader(tmp_path):
+def test_curseforge_pack_without_a_loader_is_vanilla(tmp_path):
     path = write_curseforge_pack(tmp_path / "p.zip", _manifest(modLoaders=[]))
-    with pytest.raises(PackError):
-        load(path)
+    pack = load(path)
+    assert (pack.loader_kind, pack.loader_version, pack.loader) == (None, None, None)
+
+
+def test_curseforge_rejects_a_malformed_loader_id(tmp_path):
+    manifest = _manifest(modLoaders=[{"id": "forge", "primary": True}])
+    with pytest.raises(PackError, match="Invalid mod loader id"):
+        load(write_curseforge_pack(tmp_path / "p.zip", manifest))
+
+
+def test_mrpack_without_a_loader_is_vanilla(tmp_path):
+    pack = load(write_mrpack(tmp_path / "p.mrpack", loader={}))
+    assert pack.minecraft == "1.21.1"
+    assert (pack.loader_kind, pack.loader_version, pack.loader) == (None, None, None)
 
 
 def test_override_path_traversal_is_rejected(tmp_path):

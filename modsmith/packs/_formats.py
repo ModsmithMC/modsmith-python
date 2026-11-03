@@ -152,7 +152,7 @@ class Mrpack(PackFormat):
             Modrinth's CDN also carry a `FileRef`.
 
         Raises:
-            PackError: The index is invalid or does not name a game version or loader.
+            PackError: The index is invalid or does not name a game version.
             UnsupportedError: The pack is for another game.
         """
         try:
@@ -165,9 +165,8 @@ class Mrpack(PackFormat):
         minecraft = dependencies.pop("minecraft", None)
         if minecraft is None:
             raise PackError("Modpack does not declare a Minecraft version")
-        if not dependencies:
-            raise PackError("Modpack does not declare a mod loader")
-        loader_kind, loader_version = next(iter(dependencies.items()))
+        # A pack of resource packs, shaders and settings needs no mod loader.
+        loader_kind, loader_version = next(iter(dependencies.items()), (None, None))
         return Modpack(
             format=self.name,
             name=data.name,
@@ -243,19 +242,20 @@ class CurseForgePack(PackFormat):
             The modpack. Its entries need `CurseForge.resolve`.
 
         Raises:
-            PackError: The manifest is invalid or does not name a mod loader.
+            PackError: The manifest is invalid or names a malformed mod loader.
         """
         try:
             data = _CfManifest.model_validate(index)
         except ValidationError as e:
             raise PackError(f"Invalid {self.index_file}: {e}") from e
         loaders = data.minecraft.mod_loaders
-        if not loaders:
-            raise PackError("Modpack does not declare a mod loader")
-        loader = next((item for item in loaders if item.primary), loaders[0])
-        kind, _, version = loader.id.partition("-")
-        if not version:
-            raise PackError(f"Invalid mod loader id: {loader.id}")
+        kind: str | None = None
+        version: str | None = None
+        if loaders:
+            loader = next((item for item in loaders if item.primary), loaders[0])
+            kind, _, version = loader.id.partition("-")
+            if not version:
+                raise PackError(f"Invalid mod loader id: {loader.id}")
 
         def entry(file: _CfFile) -> PackEntry:
             support: Support = "required" if file.required else "optional"

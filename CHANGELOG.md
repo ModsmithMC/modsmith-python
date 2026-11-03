@@ -10,6 +10,13 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - `Platform.latest_release` returns a project's newest release for a game
   version and loader in one call, falling back from Quilt to Fabric.
+- `Modpack.install_game` installs what a pack runs on, its mod loader or
+  plain Minecraft, and returns the version id for a launcher profile.
+
+### Changed
+
+- `Modpack.loader_kind`, `Modpack.loader_version` and `Modpack.loader` are None
+  for a pack that needs no mod loader.
 
 ### Removed
 
@@ -20,6 +27,11 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   exported from `modsmith.loaders`.
 - `Launcher.profile_files`, `Profile.from_dict` and
   `ProcessorLoader.fetch_installer` are now private.
+
+### Fixed
+
+- Packs that declare no mod loader can be read and installed. Before, they
+  were rejected, although the formats allow them.
 
 ## [0.3.0] - 2026-11-03
 

@@ -37,7 +37,7 @@ Reading a pack needs no network. The `pack` object is the same whichever format 
 
 ```python
 game = ms.minecraft.GameDir.default()
-version_id = pack.loader.install(game)
+version_id = pack.install_game(game)
 ```
 
 `GameDir.default` is the official launcher's game directory. `install` downloads Minecraft and the mod loader, and returns the id of the new game version. Running it again does nothing.
@@ -67,7 +67,7 @@ Open the official launcher, choose the new installation and press Play.
 To update, read the newer pack and sync the same instance. Install the new loader version too, in case it changed:
 
 ```python
-version_id = pack.loader.install(game)
+version_id = pack.install_game(game)
 changes = instance.sync(pack)
 launcher.add_profile(pack.name, version_id, instance.path)
 ```

@@ -10,7 +10,9 @@ from typing import IO, Literal
 from .._fs import write_atomic
 from ..errors import PackError
 from ..loaders import Loader, create
-from ..net import Resource
+from ..minecraft import GameDir, install_version
+from ..net import Resource, Session
+from ..progress import CancelToken, ProgressCallback
 
 # Which half of the game a file is for, and how much that side needs it.
 Side = Literal["client", "server"]
@@ -122,8 +124,8 @@ class Modpack:
         name: The pack's name.
         version: The pack's version.
         minecraft: The Minecraft version it needs.
-        loader_kind: The mod loader's name.
-        loader_version: The mod loader's version.
+        loader_kind: The mod loader's name, or None for a vanilla pack.
+        loader_version: The mod loader's version, or None for a vanilla pack.
         entries: The files it needs.
         archive: The archive it was read from.
         override_roots: Archive folders with extra files, keyed by ``common``,
@@ -135,8 +137,8 @@ class Modpack:
     name: str
     version: str
     minecraft: str
-    loader_kind: str
-    loader_version: str
+    loader_kind: str | None
+    loader_version: str | None
     entries: tuple[PackEntry, ...]
     archive: Path
     override_roots: Mapping[str, str] = field(
@@ -145,13 +147,62 @@ class Modpack:
     memory_mb: int | None = None
 
     @property
-    def loader(self) -> Loader:
-        """The pack's mod loader.
+    def loader(self) -> Loader | None:
+        """The pack's mod loader, or None for a vanilla pack.
 
         Raises:
             UnsupportedError: The loader is not supported.
         """
-        return create(self.loader_kind, self.loader_version, self.minecraft)
+        if self.loader_kind is None:
+            return None
+        return create(self.loader_kind, self.loader_version or "", self.minecraft)
+
+    def install_game(
+        self,
+        game: GameDir,
+        *,
+        java: Path | None = None,
+        cache_dir: Path | None = None,
+        session: Session | None = None,
+        progress: ProgressCallback | None = None,
+        cancel: CancelToken | None = None,
+    ) -> str:
+        """Install the game the pack runs on: its mod loader, or plain Minecraft.
+
+        Args:
+            game: The game directory.
+            java: The Java binary for loaders that need one. Found or
+                downloaded automatically if omitted.
+            cache_dir: The cache directory. Defaults to the per-user cache.
+            session: The session to use. A temporary one is created if omitted.
+            progress: Receives updates for each stage.
+            cancel: Stops the install.
+
+        Returns:
+            The version id to put in a launcher profile.
+
+        Raises:
+            UnsupportedError: The loader or the Minecraft version is not
+                supported.
+            NetworkError: A service could not be reached.
+            DownloadError: A file could not be downloaded.
+            LoaderError: The loader could not be installed.
+            Cancelled: ``cancel`` was triggered.
+        """
+        loader = self.loader
+        if loader is None:
+            version = install_version(
+                game, self.minecraft, session=session, progress=progress, cancel=cancel
+            )
+            return version.id
+        return loader.install(
+            game,
+            java=java,
+            cache_dir=cache_dir,
+            session=session,
+            progress=progress,
+            cancel=cancel,
+        )
 
     @property
     def unresolved(self) -> tuple[PackEntry, ...]:
