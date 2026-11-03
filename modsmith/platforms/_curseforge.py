@@ -1,7 +1,6 @@
 """The CurseForge platform."""
 
 import dataclasses
-import re
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import Any, ClassVar, Literal
@@ -14,6 +13,7 @@ from ..net import Session
 from ..packs import Modpack, PackEntry
 from ..progress import CancelToken, ProgressCallback
 from ._base import (
+    GAME_VERSION,
     Dependency,
     DependencyKind,
     Platform,
@@ -23,8 +23,11 @@ from ._base import (
     ReleaseFile,
     ReleaseType,
     SearchResults,
+    SearchSort,
+    collect_pages,
     digest_files,
     project_ref,
+    release_versions,
 )
 from ._fingerprint import fingerprint
 
@@ -63,10 +66,18 @@ CLASS_FOLDERS = {
     6945: "datapacks",
 }
 LOADER_TYPES = {"forge": 1, "fabric": 4, "quilt": 5, "neoforge": 6}
-# Without a sort field, search results come back in no useful order.
-SORT_BY_POPULARITY = 2
-# A game version such as 1.21.1 or 26.3, among labels such as Client or Forge.
-GAME_VERSION = re.compile(r"^\d+(\.\d+)+$")
+# CurseForge's sort fields. It has no relevance order, and without a sort
+# field results come back in no useful order, so popularity stands in.
+SORT_FIELDS: dict[str, int] = {
+    "relevance": 2,
+    "popularity": 2,
+    "updated": 3,
+    "downloads": 6,
+    "newest": 11,
+}
+SEARCH_PAGE = 50
+# CurseForge refuses to page past this many results.
+SEARCH_REACH = 10_000
 
 
 def split_versions(labels: Iterable[str]) -> tuple[tuple[str, ...], tuple[str, ...]]:
@@ -168,6 +179,18 @@ class _Links(_Schema):
     website_url: str | None = None
 
 
+class _Named(_Schema):
+    """An author or a category from the CurseForge API."""
+
+    name: str
+
+
+class _FileIndex(_Schema):
+    """An entry of a project's latest files from the CurseForge API."""
+
+    game_version: str = ""
+
+
 class _Mod(_Schema):
     """A project from the CurseForge API."""
 
@@ -180,6 +203,11 @@ class _Mod(_Schema):
     links: _Links | None = None
     allow_mod_distribution: bool | None = None
     download_count: int = 0
+    authors: list[_Named] = Field(default_factory=list[_Named])
+    categories: list[_Named] = Field(default_factory=list[_Named])
+    date_modified: str = ""
+    favorite_count: int = 0
+    latest_files_indexes: list[_FileIndex] = Field(default_factory=list[_FileIndex])
 
     def to_project(self, platform: str, project_type: str) -> Project:
         """Convert this mod to a `Project`, preferring the type CurseForge reports."""
@@ -194,6 +222,13 @@ class _Mod(_Schema):
             icon_url=(logo.thumbnail_url or logo.url) if logo else None,
             url=self.links.website_url if self.links else None,
             downloads=self.download_count,
+            author=self.authors[0].name if self.authors else None,
+            categories=tuple(dict.fromkeys(item.name for item in self.categories)),
+            updated=self.date_modified,
+            follows=self.favorite_count,
+            game_versions=release_versions(
+                item.game_version for item in self.latest_files_indexes
+            ),
         )
 
 
@@ -261,39 +296,73 @@ class CurseForge(Platform):
         project_type: ProjectType = "modpack",
         game_version: str | None = None,
         loader: str | None = None,
+        sort: SearchSort = "relevance",
         offset: int = 0,
         limit: int = 20,
     ) -> SearchResults:
-        """Search CurseForge's catalogue, most popular first.
+        """Search CurseForge's catalogue.
+
+        CurseForge has no relevance order, so ``relevance`` lists the most
+        popular matches first. It serves 50 results a page and no more than
+        10,000 in all; larger limits read several pages, up to that depth.
 
         Args:
             query: The search text.
             project_type: The kind of project to find.
             game_version: Only match this Minecraft version.
             loader: Only match this mod loader.
+            sort: How to order the results.
             offset: How many results to skip.
             limit: The maximum number of results to return.
 
         Returns:
-            One page of results.
+            The results.
 
         Raises:
             NetworkError: CurseForge could not be reached.
         """
-        data = self._search(
-            project_type,
-            searchFilter=query,
-            sortField=SORT_BY_POPULARITY,
-            sortOrder="desc",
-            gameVersion=game_version,
-            modLoaderType=LOADER_TYPES.get(loader or ""),
-            index=offset,
-            pageSize=limit,
-        )
-        mods = [_Mod.model_validate(item) for item in data["data"]]
-        projects = tuple(mod.to_project(self.name, project_type) for mod in mods)
-        pagination: dict[str, Any] = data.get("pagination") or {}
-        return SearchResults(projects, pagination.get("totalCount", len(mods)), offset)
+
+        def page(start: int, size: int) -> tuple[list[Project], int]:
+            data = self._search(
+                project_type,
+                searchFilter=query,
+                sortField=SORT_FIELDS[sort],
+                sortOrder="desc",
+                gameVersion=game_version,
+                modLoaderType=LOADER_TYPES.get(loader or ""),
+                index=start,
+                pageSize=size,
+            )
+            mods = [_Mod.model_validate(item) for item in data["data"]]
+            pagination: dict[str, Any] = data.get("pagination") or {}
+            total = pagination.get("totalCount", len(mods))
+            return [mod.to_project(self.name, project_type) for mod in mods], total
+
+        return collect_pages(page, offset, limit, SEARCH_PAGE, SEARCH_REACH)
+
+    def get_projects(
+        self, ids: Iterable[str], *, project_type: ProjectType = "mod"
+    ) -> dict[str, Project]:
+        """Look up several projects by id, in as few requests as possible.
+
+        Args:
+            ids: The projects' numeric ids.
+            project_type: The kind to report when CurseForge does not say.
+
+        Returns:
+            Each project CurseForge knows, keyed by id. Unknown ids and slugs
+            are left out.
+
+        Raises:
+            NetworkError: CurseForge could not be reached.
+        """
+        numbers = sorted({int(item) for item in ids if str(item).isdigit()})
+        mods = self._mods(numbers)
+        return {
+            str(number): mods[number].to_project(self.name, project_type)
+            for number in numbers
+            if number in mods
+        }
 
     def get_project(
         self, ref: str | int, *, project_type: ProjectType = "modpack"

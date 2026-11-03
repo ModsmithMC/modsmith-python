@@ -231,3 +231,31 @@ def test_mrpack_entries_name_their_modrinth_release(modrinth, tmp_path):
     assert len(refs) == len(pack.entries)
     found = modrinth.get_release(refs[0].file_id)
     assert found.project_id == refs[0].project_id
+
+
+def test_search_sorts_and_reads_past_one_page(modrinth):
+    results = modrinth.search("", project_type="mod", sort="downloads", limit=150)
+    assert len(results.projects) == 150
+    counts = [item.downloads for item in results.projects]
+    assert counts == sorted(counts, reverse=True)
+    assert len({item.id for item in results.projects}) == 150
+
+
+def test_search_results_describe_projects(modrinth):
+    project = modrinth.search(LARGE_PROJECT, project_type="mod", limit=1).projects[0]
+    assert project.author
+    assert project.updated
+    assert project.follows
+    assert project.categories
+    assert not {"Fabric", "Quilt", "Neoforge"} & set(project.categories)
+    assert all(
+        version[0].isdigit() and "-" not in version for version in project.game_versions
+    )
+
+
+def test_bulk_lookup(modrinth):
+    found = modrinth.get_projects(
+        [LARGE_PROJECT, DEPENDENT_PROJECT, "no-such-project-x"]
+    )
+    assert set(found) == {LARGE_PROJECT, DEPENDENT_PROJECT}
+    assert found[LARGE_PROJECT].game_versions

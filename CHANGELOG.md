@@ -10,6 +10,14 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - `Platform.latest_release` returns a project's newest release for a game
   version and loader in one call, falling back from Quilt to Fabric.
+- `Platform.search` takes `sort`: `relevance`, `downloads`, `popularity`,
+  `newest` or `updated`, the same on both platforms. `limit` may exceed what a
+  platform serves at once; the extra pages are read for you.
+- `Project` gains `author`, `categories`, `updated`, `follows` and
+  `game_versions`, filled the same way on both platforms.
+- `Platform.get_projects` looks up many projects at once. `Instance.plan`,
+  `Instance.plan_updates` and `Instance.adopt` use it, so they need far fewer
+  requests.
 
 ### Removed
 

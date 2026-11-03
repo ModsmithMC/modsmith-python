@@ -10,6 +10,7 @@ from ._base import (
     ReleaseFile,
     ReleaseType,
     SearchResults,
+    SearchSort,
 )
 from ._curseforge import CurseForge
 from ._modrinth import Modrinth
@@ -30,5 +31,6 @@ __all__ = [
     "ReleaseType",
     "Resolution",
     "SearchResults",
+    "SearchSort",
     "resolve_dependencies",
 ]
