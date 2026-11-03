@@ -553,7 +553,7 @@ typing = [
 [[package]]
 name = "modsmith-sphinx-theme"
 version = "0.1.0"
-source = { git = "https://github.com/ModsmithMC/modsmithmc.github.io?subdirectory=theme#87a278379912ed410dcbf9e2bc3d5c4ef24f740a" }
+source = { git = "https://github.com/ModsmithMC/modsmithmc.github.io?subdirectory=theme#bcd1572e24da44d9109f06eea93064a4e860c544" }
 dependencies = [
     { name = "sphinx", version = "9.1.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.13'" },
     { name = "sphinx", version = "9.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
