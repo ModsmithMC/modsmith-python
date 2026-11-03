@@ -41,7 +41,7 @@ def write_mrpack(
         "files": list(files),
         "dependencies": {
             "minecraft": "1.21.1",
-            **(loader or {"fabric-loader": "0.16.10"}),
+            **({"fabric-loader": "0.16.10"} if loader is None else loader),
         },
     }
     content: dict[str, bytes | str] = {"modrinth.index.json": json.dumps(index)}

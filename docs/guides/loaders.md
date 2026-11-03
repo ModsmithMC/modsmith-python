@@ -8,8 +8,10 @@ import modsmith as ms
 game = ms.minecraft.GameDir.default()
 pack = ms.packs.load("pack.mrpack")
 
-version_id = pack.loader.install(game)
+version_id = pack.install_game(game)
 ```
+
+`install_game` installs the pack's loader, or plain Minecraft if the pack has none, and returns the version id for a launcher profile. `pack.loader` gives you the loader itself, and is `None` for a vanilla pack.
 
 You can also install one directly. The version comes first, then the Minecraft version:
 

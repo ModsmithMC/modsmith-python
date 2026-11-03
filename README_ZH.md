@@ -88,7 +88,7 @@ with ms.platforms.Modrinth("my-tool/1.0") as modrinth:
     pack = ms.packs.load(modrinth.fetch(release, ".cache"))
 
 game = ms.minecraft.GameDir.default()
-version_id = pack.loader.install(game)
+version_id = pack.install_game(game)
 
 instance = ms.instances.Instance("instances/fabulously-optimized")
 instance.sync(pack)

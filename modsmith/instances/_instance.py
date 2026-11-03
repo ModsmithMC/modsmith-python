@@ -297,7 +297,9 @@ class Instance:
                 self._state_path,
                 InstanceState(
                     minecraft=pack.minecraft,
-                    loader_kind=loader_name(pack.loader_kind),
+                    loader_kind=loader_name(pack.loader_kind)
+                    if pack.loader_kind
+                    else None,
                     loader_version=pack.loader_version,
                     pack_name=pack.name,
                     pack_version=pack.version,
