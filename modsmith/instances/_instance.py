@@ -37,6 +37,29 @@ def _now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
 
 
+def _remaining(
+    state: InstanceState, projects: tuple[str, ...], keep_dependencies: bool
+) -> list[Addition]:
+    """Return the additions left after removing some projects.
+
+    Raises:
+        InstanceError: A name is not an addition.
+    """
+    unknown = [
+        name
+        for name in projects
+        if not any(item.matches(name) for item in state.additions)
+    ]
+    if unknown:
+        raise InstanceError(f"Not added on its own: {', '.join(unknown)}")
+    remaining = [
+        item
+        for item in state.additions
+        if not any(item.matches(name) for name in projects)
+    ]
+    return remaining if keep_dependencies else unneeded(remaining)
+
+
 class Instance:
     """A game directory whose contents come from a modpack and added projects.
 
@@ -564,7 +587,9 @@ class Instance:
                 cancel=cancel,
             )
 
-    def remove(self, *projects: str, keep_dependencies: bool = False) -> Changes:
+    def remove(
+        self, *projects: str, keep_dependencies: bool = False, dry_run: bool = False
+    ) -> Changes:
         """Remove additions, and the dependencies nothing else needs.
 
         A file the player changed is kept, and listed in ``orphaned``.
@@ -572,36 +597,27 @@ class Instance:
         Args:
             *projects: Project ids, slugs or paths of additions.
             keep_dependencies: Keep dependencies even if nothing needs them.
+            dry_run: Only work out what would change, and change nothing.
 
         Returns:
-            What changed.
+            What changed, or with ``dry_run``, what would change.
 
         Raises:
             InstanceError: A name is not an addition, for example because the
                 pack installed it, or a file could not be removed.
             LockedError: Another change is using this instance.
         """
+        if dry_run:
+            state = self._require_state()
+            remaining = _remaining(state, projects, keep_dependencies)
+            return self._preview(state, remaining)
         self._require_state()
         self._recover()
         with file_lock(self._lock_path, wait=0):
             state = self._require_state()
-            unknown = [
-                name
-                for name in projects
-                if not any(item.matches(name) for item in state.additions)
-            ]
-            if unknown:
-                raise InstanceError(f"Not added on its own: {', '.join(unknown)}")
-            remaining = [
-                item
-                for item in state.additions
-                if not any(item.matches(name) for name in projects)
-            ]
-            if not keep_dependencies:
-                remaining = unneeded(remaining)
             return self._replace_additions(
                 state,
-                remaining,
+                _remaining(state, projects, keep_dependencies),
                 overwrite=False,
                 adopt_from=(),
                 session=None,

@@ -27,6 +27,8 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Loaders that implement `Loader.available` take part.
 - `Modpack.install_game` installs what a pack runs on, its mod loader or
   plain Minecraft, and returns the version id for a launcher profile.
+- `Instance.remove` takes `dry_run`, to show what a removal would take away,
+  dependencies and kept player changes included, before doing it.
 
 ### Changed
 

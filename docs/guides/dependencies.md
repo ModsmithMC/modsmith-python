@@ -11,9 +11,7 @@ import modsmith as ms
 
 with ms.platforms.Modrinth("my-tool/1.0") as modrinth:
     iris = modrinth.get_project("iris")
-    release = next(
-        modrinth.iter_releases(iris, game_version="1.21.1", loader="fabric")
-    )
+    release = next(modrinth.iter_releases(iris, game_version="1.21.1", loader="fabric"))
 
     plan = ms.platforms.resolve_dependencies(
         modrinth,
