@@ -478,6 +478,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "modsmith-sphinx-theme" },
     { name = "myst-parser" },
     { name = "pre-commit" },
     { name = "pyright" },
@@ -490,6 +491,7 @@ dev = [
     { name = "types-requests" },
 ]
 docs = [
+    { name = "modsmith-sphinx-theme" },
     { name = "myst-parser" },
     { name = "sphinx", version = "9.1.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.13'" },
     { name = "sphinx", version = "9.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
@@ -518,6 +520,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "modsmith-sphinx-theme", git = "https://github.com/ModsmithMC/modsmithmc.github.io?subdirectory=theme" },
     { name = "myst-parser", specifier = ">=5.1.0" },
     { name = "pre-commit", specifier = ">=4.0" },
     { name = "pyright", specifier = ">=1.1.390" },
@@ -529,6 +532,7 @@ dev = [
     { name = "types-requests", specifier = ">=2.32" },
 ]
 docs = [
+    { name = "modsmith-sphinx-theme", git = "https://github.com/ModsmithMC/modsmithmc.github.io?subdirectory=theme" },
     { name = "myst-parser", specifier = ">=5.1.0" },
     { name = "sphinx", specifier = ">=9.1.1" },
 ]
@@ -544,6 +548,15 @@ test = [
 typing = [
     { name = "pyright", specifier = ">=1.1.390" },
     { name = "types-requests", specifier = ">=2.32" },
+]
+
+[[package]]
+name = "modsmith-sphinx-theme"
+version = "0.1.0"
+source = { git = "https://github.com/ModsmithMC/modsmithmc.github.io?subdirectory=theme#87a278379912ed410dcbf9e2bc3d5c4ef24f740a" }
+dependencies = [
+    { name = "sphinx", version = "9.1.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.13'" },
+    { name = "sphinx", version = "9.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
 ]
 
 [[package]]

@@ -36,7 +36,7 @@ Modsmith installs Forge 1.13.2 and later. See [Compatibility](compatibility.md).
 
 ### `Hash mismatch for ...`
 
-A processor produced a file that differs from what the installer expected. Modsmith tries other Java runtimes first, so this message means they all failed. If you passed `java=`, try removing it. Otherwise, [report it](https://github.com/PaPa-jun/Modsmith/issues) with the loader and Minecraft versions.
+A processor produced a file that differs from what the installer expected. Modsmith tries other Java runtimes first, so this message means they all failed. If you passed `java=`, try removing it. Otherwise, [report it](https://github.com/ModsmithMC/modsmith-python/issues) with the loader and Minecraft versions.
 
 ### `Mojang has no ... for ...`
 
@@ -84,4 +84,4 @@ Every download location failed. `DownloadError.failures` lists the reason for ea
 
 ## Still stuck
 
-Open an [issue](https://github.com/PaPa-jun/Modsmith/issues) with your Modsmith version, Python version, system and the full error.
+Open an [issue](https://github.com/ModsmithMC/modsmith-python/issues) with your Modsmith version, Python version, system and the full error.

@@ -12,7 +12,9 @@ import requests
 from .._version import __version__
 from ..errors import NetworkError
 
-DEFAULT_USER_AGENT = f"modsmith/{__version__} (https://github.com/PaPa-jun/Modsmith)"
+DEFAULT_USER_AGENT = (
+    f"modsmith/{__version__} (https://github.com/ModsmithMC/modsmith-python)"
+)
 DEFAULT_TIMEOUT = (10.0, 60.0)
 MAX_RETRY_AFTER = 60.0
 RETRY_STATUS = frozenset({429, 500, 502, 503, 504})
