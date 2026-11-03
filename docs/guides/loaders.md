@@ -33,6 +33,27 @@ loader = ms.loaders.create("fabric", "0.16.10", "1.21.1")
 loader = ms.loaders.parse("forge-47.3.0", "1.20.1")
 ```
 
+## Pick a version
+
+When you know only the loader and the Minecraft version, ask for the recommended one:
+
+```python
+fabric = ms.loaders.recommended("fabric", "1.21.1")
+print(fabric.version)
+```
+
+That is the version the loader's project recommends, such as Forge's recommended build, and otherwise its newest stable one. The result is a loader, ready to `install`.
+
+To let a player choose, list the versions, newest first:
+
+```python
+for item in ms.loaders.versions("neoforge", "1.21.1")[:5]:
+    label = "stable" if item.stable else "pre-release"
+    print(item.version, label, "recommended" if item.recommended else "")
+```
+
+Each loader publishes its versions differently. NeoForge, for example, keeps one unsorted list for every Minecraft version. `versions` reads each loader's own source and gives the same answer for all of them.
+
 ## Check what is installed
 
 ```python

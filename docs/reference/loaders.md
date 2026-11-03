@@ -19,6 +19,18 @@ Install mod loaders.
    Quilt
 ```
 
+## Versions
+
+```{eval-rst}
+.. autosummary::
+   :toctree: loaders
+   :nosignatures:
+
+   versions
+   recommended
+   LoaderVersion
+```
+
 ## Build from a name
 
 ```{eval-rst}

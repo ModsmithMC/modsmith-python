@@ -1,5 +1,6 @@
 """The loader interface and the registry behind `create` and `parse`."""
 
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
@@ -9,6 +10,73 @@ from ..errors import UnsupportedError
 from ..minecraft import GameDir
 from ..net import Session
 from ..progress import CancelToken, ProgressCallback
+
+# Words in a version that mark a pre-release, such as ``0.20.0-beta.9``.
+PRE_RELEASE = re.compile(r"(alpha|beta|pre|rc)", re.IGNORECASE)
+
+
+def version_key(version: str) -> tuple[tuple[int, ...], bool, str]:
+    """Sort key for loader versions: numbers first, then releases after pre-releases."""
+    numbers = tuple(int(part) for part in re.findall(r"\d+", version.split("-")[0]))
+    return numbers, not PRE_RELEASE.search(version), version
+
+
+def is_stable(version: str) -> bool:
+    """Return whether a version's text marks it as a full release."""
+    return not PRE_RELEASE.search(version)
+
+
+@dataclass(frozen=True)
+class LoaderVersion:
+    """One published version of a mod loader for a Minecraft version.
+
+    Attributes:
+        kind: The loader's name, such as ``fabric``.
+        version: The loader version.
+        minecraft: The Minecraft version it targets.
+        stable: Whether it is a full release rather than an alpha or beta.
+        recommended: Whether it is the one to install by default. At most one
+            version in a list is recommended.
+    """
+
+    kind: str
+    version: str
+    minecraft: str
+    stable: bool = True
+    recommended: bool = False
+
+    def loader(self) -> "Loader":
+        """Return a loader for this version, ready to install.
+
+        Raises:
+            UnsupportedError: No loader is registered under ``kind``.
+        """
+        return create(self.kind, self.version, self.minecraft)
+
+
+def recommend(
+    versions: list[LoaderVersion], choice: str | None = None
+) -> list[LoaderVersion]:
+    """Sort versions newest first and mark the one to install by default.
+
+    Args:
+        versions: The versions, in any order.
+        choice: The version the loader's own project recommends, if it names one
+            and it is in the list. Otherwise the newest stable version is chosen.
+
+    Returns:
+        The sorted versions.
+    """
+    ordered = sorted(versions, key=lambda item: version_key(item.version), reverse=True)
+    known = {item.version for item in ordered}
+    if choice not in known:
+        choice = next((item.version for item in ordered if item.stable), None)
+    return [
+        LoaderVersion(
+            item.kind, item.version, item.minecraft, item.stable, item.version == choice
+        )
+        for item in ordered
+    ]
 
 
 @dataclass(frozen=True)
@@ -24,6 +92,29 @@ class Loader(ABC):
     version: str
     minecraft: str
     kind: ClassVar[str]
+
+    @classmethod
+    def available(
+        cls, minecraft: str, *, session: Session | None = None
+    ) -> list[LoaderVersion]:
+        """List this loader's versions for a Minecraft version, newest first.
+
+        Override it so `versions` and `recommended` can offer the loader.
+
+        Args:
+            minecraft: The Minecraft version.
+            session: The session to use. A temporary one is created if omitted.
+
+        Returns:
+            The versions, empty if the loader does not support that Minecraft
+            version. At most one is marked recommended.
+
+        Raises:
+            UnsupportedError: The loader cannot list its versions. That is the
+                default.
+            NetworkError: The loader's version list could not be fetched.
+        """
+        raise UnsupportedError(f"{cls.kind} cannot list its versions")
 
     @abstractmethod
     def version_id(
@@ -139,10 +230,69 @@ def create(kind: str, version: str, minecraft: str) -> Loader:
     Raises:
         UnsupportedError: No loader is registered under that name.
     """
+    cls = _loader_class(kind)
+    return cls(version.removeprefix(f"{minecraft}-"), minecraft)
+
+
+def _loader_class(kind: str) -> type[Loader]:
+    """Return the class registered under a loader name."""
     cls = _registry.get(loader_name(kind))
     if cls is None:
         raise UnsupportedError(f"Unsupported mod loader: {kind}")
-    return cls(version.removeprefix(f"{minecraft}-"), minecraft)
+    return cls
+
+
+def versions(
+    kind: str, minecraft: str, *, session: Session | None = None
+) -> list[LoaderVersion]:
+    """List a loader's versions for a Minecraft version, newest first.
+
+    Each loader publishes its versions differently. This reads each one's own
+    source and returns the same shape for all of them.
+
+    Args:
+        kind: The loader's name, such as ``neoforge`` or ``fabric-loader``.
+        minecraft: The Minecraft version.
+        session: The session to use. A temporary one is created if omitted.
+
+    Returns:
+        The versions, empty if the loader does not support that Minecraft
+        version. At most one is marked recommended.
+
+    Raises:
+        UnsupportedError: The loader is unknown or cannot list its versions.
+        NetworkError: The version list could not be fetched.
+    """
+    return _loader_class(kind).available(minecraft, session=session)
+
+
+def recommended(kind: str, minecraft: str, *, session: Session | None = None) -> Loader:
+    """Return the loader version to install by default for a Minecraft version.
+
+    That is the version the loader's project recommends, if it names one, and
+    otherwise its newest stable version. If there is no stable version, the
+    newest one is used.
+
+    Args:
+        kind: The loader's name.
+        minecraft: The Minecraft version.
+        session: The session to use. A temporary one is created if omitted.
+
+    Returns:
+        The loader, ready to install.
+
+    Raises:
+        UnsupportedError: The loader is unknown, cannot list its versions, or
+            has none for that Minecraft version.
+        NetworkError: The version list could not be fetched.
+    """
+    found = versions(kind, minecraft, session=session)
+    choice = next((item for item in found if item.recommended), None)
+    if choice is None and found:
+        choice = found[0]
+    if choice is None:
+        raise UnsupportedError(f"{kind} has no version for Minecraft {minecraft}")
+    return choice.loader()
 
 
 def parse(loader_id: str, minecraft: str) -> Loader:

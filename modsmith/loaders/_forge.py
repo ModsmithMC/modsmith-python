@@ -2,6 +2,7 @@
 
 import logging
 import tempfile
+import xml.etree.ElementTree as ElementTree
 from abc import abstractmethod
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -16,12 +17,50 @@ from ..minecraft import GameDir, install_version
 from ..net import Resource, Session, download
 from ..net._session import session_scope
 from ..progress import CancelToken, ProgressCallback
-from ._base import Loader, register
+from ._base import Loader, LoaderVersion, is_stable, recommend, register
 from ._install_profile import InstallerJar, Library, Variables
 from ._processors import run_processors
 
 logger = logging.getLogger(__name__)
 LEGACY_NEOFORGE = "1.20.1"
+FORGE_PROMOTIONS = (
+    "https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json"
+)
+
+
+def maven_versions(session: Session, url: str) -> list[str]:
+    """Read the versions listed in a Maven ``maven-metadata.xml``.
+
+    Raises:
+        NetworkError: The file could not be fetched or is not valid XML.
+    """
+    text = session.request("GET", url).text
+    try:
+        root = ElementTree.fromstring(text)
+    except ElementTree.ParseError as e:
+        raise NetworkError(f"Invalid Maven metadata from {url}: {e}") from e
+    return [item.text for item in root.iter("version") if item.text]
+
+
+def neoforge_minecraft(version: str) -> str | None:
+    """Return the Minecraft version that a NeoForge version is for.
+
+    NeoForge numbers its versions after the game: ``21.1.77`` is for 1.21.1
+    and ``21.0.143`` for 1.21. From 2026 the game's own version comes first,
+    so ``26.1.2.125`` is for 26.1.2 and ``26.3.0.100`` for 26.3.
+
+    Returns:
+        The Minecraft version, or None if the version does not follow either
+        scheme.
+    """
+    numbers = version.split("-")[0].split(".")
+    if len(numbers) < 3 or not all(part.isdigit() for part in numbers):
+        return None
+    if len(numbers) >= 4:
+        game = numbers[:3]
+        return ".".join(game[:2] if game[2] == "0" else game)
+    major, minor = numbers[0], numbers[1]
+    return f"1.{major}" if minor == "0" else f"1.{major}.{minor}"
 
 
 @dataclass(frozen=True)
@@ -280,6 +319,48 @@ class Forge(ProcessorLoader):
     kind: ClassVar[str] = "forge"
     repository: str = "https://maven.minecraftforge.net"
 
+    @classmethod
+    def available(
+        cls,
+        minecraft: str,
+        *,
+        session: Session | None = None,
+        repository: str | None = None,
+        promotions_url: str = FORGE_PROMOTIONS,
+    ) -> list[LoaderVersion]:
+        """List Forge's versions for a Minecraft version, newest first.
+
+        The recommended version is the one Forge itself recommends for that
+        Minecraft version, or the newest when it recommends none.
+
+        Args:
+            minecraft: The Minecraft version.
+            session: The session to use. A temporary one is created if omitted.
+            repository: The Maven repository. Defaults to Forge's own.
+            promotions_url: Where Forge lists its recommended versions.
+
+        Returns:
+            The versions, empty if Forge has none for that Minecraft version.
+
+        Raises:
+            NetworkError: The version list could not be fetched.
+        """
+        base = (repository or cls.repository).rstrip("/")
+        with session_scope(session) as client:
+            names = maven_versions(
+                client, f"{base}/net/minecraftforge/forge/maven-metadata.xml"
+            )
+            promotions: dict[str, str] = client.get_json(promotions_url).get(
+                "promos", {}
+            )
+        prefix = f"{minecraft}-"
+        found = [
+            LoaderVersion(cls.kind, name.removeprefix(prefix), minecraft)
+            for name in names
+            if name.startswith(prefix)
+        ]
+        return recommend(found, promotions.get(f"{minecraft}-recommended"))
+
     def expected_id(self) -> str:
         """Return the version id that this version's installer declares."""
         return f"{self.minecraft}-forge-{self.version}"
@@ -301,6 +382,54 @@ class NeoForge(ProcessorLoader):
 
     kind: ClassVar[str] = "neoforge"
     repository: str = "https://maven.neoforged.net/releases"
+
+    @classmethod
+    def available(
+        cls,
+        minecraft: str,
+        *,
+        session: Session | None = None,
+        repository: str | None = None,
+    ) -> list[LoaderVersion]:
+        """List NeoForge's versions for a Minecraft version, newest first.
+
+        NeoForge publishes one unsorted list for every Minecraft version, so the
+        game version is worked out from each version number. Versions marked
+        ``beta`` are pre-releases, and the newest stable one is recommended.
+
+        Args:
+            minecraft: The Minecraft version.
+            session: The session to use. A temporary one is created if omitted.
+            repository: The Maven repository. Defaults to NeoForge's own.
+
+        Returns:
+            The versions, empty if NeoForge has none for that Minecraft version.
+
+        Raises:
+            NetworkError: The version list could not be fetched.
+        """
+        base = (repository or cls.repository).rstrip("/")
+        with session_scope(session) as client:
+            # NeoForge's first release still used Forge's artifact name.
+            if minecraft == LEGACY_NEOFORGE:
+                url = f"{base}/net/neoforged/forge/maven-metadata.xml"
+                prefix = f"{minecraft}-"
+                names = [
+                    name.removeprefix(prefix)
+                    for name in maven_versions(client, url)
+                    if name.startswith(prefix)
+                ]
+            else:
+                url = f"{base}/net/neoforged/neoforge/maven-metadata.xml"
+                names = [
+                    name
+                    for name in maven_versions(client, url)
+                    if neoforge_minecraft(name) == minecraft
+                ]
+        found = [
+            LoaderVersion(cls.kind, name, minecraft, is_stable(name)) for name in names
+        ]
+        return recommend(found)
 
     def expected_id(self) -> str:
         """Return the version id that this version's installer declares."""

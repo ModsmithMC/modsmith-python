@@ -10,6 +10,10 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - `Platform.latest_release` returns a project's newest release for a game
   version and loader in one call, falling back from Quilt to Fabric.
+- `modsmith.loaders.versions` lists a loader's versions for a Minecraft version,
+  newest first and marked stable or not, the same way for every loader.
+  `modsmith.loaders.recommended` returns the one to install by default.
+  Loaders that implement `Loader.available` take part.
 
 ### Removed
 
