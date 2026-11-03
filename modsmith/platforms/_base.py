@@ -8,6 +8,7 @@ from types import TracebackType
 from typing import ClassVar, Literal, Self
 
 from ..errors import PlatformError, UnsupportedError
+from ..loaders._base import LOADER_FALLBACKS
 from ..net import Resource, Session, download
 from ..packs import Modpack
 from ..progress import CancelToken, ProgressCallback, report
@@ -16,11 +17,19 @@ DependencyKind = Literal["required", "optional", "incompatible", "embedded"]
 ProjectType = Literal["mod", "modpack", "resourcepack", "shader"]
 ReleaseType = Literal["release", "beta", "alpha"]
 # Where the game looks for each kind of project, relative to the game directory.
-PROJECT_FOLDERS = {
+PROJECT_FOLDERS: dict[ProjectType, str] = {
     "mod": "mods",
     "resourcepack": "resourcepacks",
     "shader": "shaderpacks",
 }
+
+
+def folder_kind(project_type: str) -> ProjectType | None:
+    """Return a project type that has a folder in an instance, or None."""
+    for kind in PROJECT_FOLDERS:
+        if kind == project_type:
+            return kind
+    return None
 
 
 @dataclass(frozen=True)
@@ -56,7 +65,8 @@ class Project:
         None for modpacks and for kinds that do not go in a game directory's
         top level, such as datapacks, which belong to a single world.
         """
-        return PROJECT_FOLDERS.get(self.project_type)
+        kind = folder_kind(self.project_type)
+        return PROJECT_FOLDERS[kind] if kind else None
 
 
 @dataclass(frozen=True)
@@ -192,7 +202,7 @@ class Platform(ABC):
 
     def __init__(self, session: Session | None = None) -> None:
         self._owns_session = session is None
-        self.session = session or Session()
+        self.session: Session = session or Session()
 
     def __enter__(self) -> Self:
         return self
@@ -323,6 +333,45 @@ class Platform(ABC):
             Cancelled: ``cancel`` was triggered.
         """
         return {}
+
+    def latest_release(
+        self,
+        project: Project,
+        *,
+        game_version: str | None = None,
+        loader: str | None = None,
+        release_only: bool = False,
+    ) -> Release | None:
+        """Return a project's newest release for a game version and loader.
+
+        It reads only as many pages as it needs. For the Quilt loader, a Fabric
+        release is used when there is no Quilt one, because Quilt loads Fabric
+        mods.
+
+        Args:
+            project: The project.
+            game_version: Only consider this Minecraft version.
+            loader: Only consider this mod loader. None accepts any loader.
+            release_only: Leave out alpha and beta releases.
+
+        Returns:
+            The release, or None if there is none.
+
+        Raises:
+            NetworkError: The platform could not be reached.
+        """
+        loaders = LOADER_FALLBACKS.get(loader, (loader,)) if loader else (None,)
+        for item in loaders:
+            releases = self.iter_releases(
+                project,
+                game_version=game_version,
+                loader=item,
+                release_only=release_only,
+            )
+            release = next(releases, None)
+            if release is not None:
+                return release
+        return None
 
     def list_releases(
         self,

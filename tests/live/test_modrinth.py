@@ -86,7 +86,7 @@ def test_full_modpack_install(modrinth, tmp_path):
     version_id = pack.loader.install(
         game, cache_dir=tmp_path / "cache", session=modrinth.session
     )
-    instance = ms.instances.Instance.open(game_dir)
+    instance = ms.instances.Instance(game_dir)
     preview = instance.diff(pack)
     assert preview.added
     changes = instance.sync(pack, session=modrinth.session)

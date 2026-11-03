@@ -121,7 +121,7 @@ def test_distribution_opt_out_needs_a_manual_download(curseforge, tmp_path):
         assert entry.urls == ()
         assert entry.manual_url.startswith("https://www.curseforge.com/")
 
-    instance = ms.instances.Instance.open(tmp_path / "game")
+    instance = ms.instances.Instance(tmp_path / "game")
     with pytest.raises(ms.errors.UnresolvedEntriesError):
         instance.sync(resolved, session=curseforge.session)
     assert not instance.path.exists()
@@ -134,7 +134,7 @@ def test_install_resolved_files(curseforge, tmp_path):
     available = resolved.with_entries(
         tuple(entry for entry in resolved.entries if entry.is_resolved)
     )
-    instance = ms.instances.Instance.open(tmp_path / "game")
+    instance = ms.instances.Instance(tmp_path / "game")
     changes = instance.sync(available, session=curseforge.session)
     assert changes.added
     again = instance.sync(available, session=curseforge.session)

@@ -32,7 +32,7 @@ def pack_of(tmp_path, files=(), overrides=None, version="1.0", name="p.mrpack"):
 
 @pytest.fixture
 def instance(tmp_path):
-    return Instance.open(tmp_path / "game")
+    return Instance(tmp_path / "game")
 
 
 def test_first_sync_installs_everything(server, session, instance, tmp_path):
@@ -311,7 +311,7 @@ def test_file_in_use_puts_everything_back(session, instance, tmp_path):
         name="new.mrpack",
     )
 
-    with open(instance.path / "b", "rb"), pytest.raises(InstanceError):
+    with (instance.path / "b").open("rb"), pytest.raises(InstanceError):
         instance.sync(new, session=session)
 
     assert (instance.path / "a").read_text() == "v1"

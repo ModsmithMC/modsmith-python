@@ -3,8 +3,12 @@ import json
 import pytest
 
 from modsmith.errors import LoaderError, UnsupportedError
-from modsmith.loaders import InstallerJar, InstallProfile
-from modsmith.loaders._install_profile import Variables, replace_tokens
+from modsmith.loaders._install_profile import (
+    InstallerJar,
+    InstallProfile,
+    Variables,
+    replace_tokens,
+)
 from modsmith.minecraft import maven_path
 from tests.lib.builders import PROFILE_FILES
 

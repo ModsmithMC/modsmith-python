@@ -19,7 +19,7 @@ def file_hash(path: Path, algorithm: str = "sha1") -> str:
     Returns:
         The hexadecimal digest.
     """
-    with open(path, "rb") as file:
+    with Path(path).open("rb") as file:
         return stream_hash(file, algorithm)
 
 

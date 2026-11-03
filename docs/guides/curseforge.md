@@ -39,7 +39,7 @@ Ask the player to download the files, then point `sync` at the folder:
 ```python
 from pathlib import Path
 
-instance = ms.instances.Instance.open("instances/my-pack")
+instance = ms.instances.Instance("instances/my-pack")
 instance.sync(pack, adopt_from=[Path.home() / "Downloads"])
 ```
 

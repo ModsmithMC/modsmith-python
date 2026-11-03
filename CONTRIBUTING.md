@@ -67,6 +67,28 @@ Platform behaviour is tested only in `tests/live`, against the real services.
   unconfirmed.
 - No test starts the game.
 
+## Code layout
+
+Each public module is a file or a package under `modsmith/`. Inside a package,
+modules whose names start with `_` hold the implementation, and the package's
+`__init__.py` lists the public names in `__all__`.
+
+- A module imports only from modules in lower layers. The order is in
+  `tests/unit/test_architecture.py`, which fails if an import goes the other
+  way.
+- Inside the library, a package may import another package's private
+  modules, such as `..net._session`, but never names that start with `_`.
+  Do not re-export internal names from a package's `__init__.py`, because
+  editors would then offer them to users.
+- Helpers shared by many packages live in private top-level modules, such as
+  `_fs.py`.
+- The full public API is listed in `tests/unit/test_public_api.py`. Change that
+  list, the reference pages and the changelog together.
+
+A convenience may sit on top of the core when it is built only from public
+parts, serves a common task, returns existing types and leaves policy, such as
+where files go, to the caller.
+
 ## Docstrings
 
 Write Google-style docstrings, in English, for every module, class and function.
@@ -106,6 +128,8 @@ uv run sphinx-build -W -b doctest docs docs/_build/doctest
 ## Releasing
 
 New versions are developed on `develop`, and `main` holds released work.
+Develop each feature on its own branch cut from `develop`, and merge it back
+through a pull request.
 
 1. Set `version` in `pyproject.toml` and move the `Unreleased` notes in
    `CHANGELOG.md` under the new version.

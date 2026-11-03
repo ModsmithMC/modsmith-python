@@ -1,13 +1,12 @@
 """Choosing releases to add to an instance, with their dependencies."""
 
-from collections.abc import Collection
+from collections.abc import Collection, Iterable
 from dataclasses import dataclass, field
 
 from ..errors import UnsupportedError
 from ..packs import FileRef, PackEntry, safe_relative
-from ..platforms import Platform, Project, Release, Resolution
-from ..platforms._base import PROJECT_FOLDERS
-from ..platforms._resolve import newest_release, resolve_dependencies
+from ..platforms import Platform, Project, Release, Resolution, resolve_dependencies
+from ..platforms._base import PROJECT_FOLDERS, folder_kind
 from ..progress import CancelToken
 from ._state import Addition, Changes, InstanceState
 
@@ -65,8 +64,7 @@ def newest(
     """Return a project's newest release that works in this instance."""
     # Resource and shader packs list the game, or a shader loader, as their loader.
     loader = state.loader_kind if project.project_type == "mod" else None
-    return newest_release(
-        platform,
+    return platform.latest_release(
         project,
         game_version=state.minecraft,
         loader=loader,
@@ -91,12 +89,13 @@ def to_addition(
         PlatformError: The release has no files.
         PackError: The file name is unsafe.
     """
-    folder = project.folder
-    if folder is None:
+    kind = folder_kind(project.project_type)
+    if kind is None:
         raise UnsupportedError(
             f"{project.name} is a {project.project_type}, "
             "which cannot be added to an instance"
         )
+    folder = PROJECT_FOLDERS[kind]
     file = release.primary_file
     entry = PackEntry(
         path=path or safe_relative(f"{folder}/{file.name}"),
@@ -110,7 +109,7 @@ def to_addition(
         entry,
         project.name,
         project.slug,
-        project.project_type,
+        kind,
         requested=requested,
         requires=requires,
         pinned=pinned,
@@ -200,3 +199,23 @@ def build_plan(
             )
         )
     return Plan(tuple(additions), resolution, skipped, unavailable)
+
+
+def unneeded(additions: list[Addition]) -> list[Addition]:
+    """Leave out dependencies that no remaining addition needs."""
+    kept = list(additions)
+    while True:
+        needed = {project for item in kept for project in item.requires}
+        remaining = [
+            item for item in kept if item.requested or item.project_id in needed
+        ]
+        if len(remaining) == len(kept):
+            return kept
+        kept = remaining
+
+
+def merge(old: Iterable[Addition], new: Iterable[Addition]) -> list[Addition]:
+    """Put new additions in place of older releases of the same projects."""
+    merged = {(item.platform, item.project_id): item for item in old}
+    merged.update({(item.platform, item.project_id): item for item in new})
+    return list(merged.values())

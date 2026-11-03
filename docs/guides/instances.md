@@ -6,7 +6,7 @@ An instance is a folder with one modpack's files. Install and update are the sam
 import modsmith as ms
 
 pack = ms.packs.load("pack.mrpack")
-instance = ms.instances.Instance.open("instances/my-pack")
+instance = ms.instances.Instance("instances/my-pack")
 
 changes = instance.sync(pack)
 ```

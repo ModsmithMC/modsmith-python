@@ -123,7 +123,7 @@ class Modrinth(Platform):
         owned = None if session else Session(user_agent or DEFAULT_USER_AGENT)
         super().__init__(session or owned)
         self._owns_session = session is None
-        self.base_url = base_url.rstrip("/")
+        self.base_url: str = base_url.rstrip("/")
 
     def _get(self, path: str, **params: Any) -> Any:
         """Send a GET request to the API."""

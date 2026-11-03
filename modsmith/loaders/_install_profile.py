@@ -3,7 +3,7 @@
 import json
 import zipfile
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -33,7 +33,7 @@ class Library(BaseModel):
         name: Its Maven coordinate.
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
     name: str
     downloads: _Downloads | None = None
@@ -78,7 +78,7 @@ class Processor(BaseModel):
         sides: The sides it runs on, or None for every side.
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
     jar: str
     classpath: list[str] = Field(default_factory=list[str])
@@ -111,7 +111,7 @@ class InstallProfile(BaseModel):
         data: The variables available to the processors.
     """
 
-    model_config = ConfigDict(frozen=True, populate_by_name=True)
+    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True, populate_by_name=True)
 
     spec: int
     version: str
@@ -163,7 +163,7 @@ class InstallerJar:
         self.path = path
         try:
             with zipfile.ZipFile(path) as archive:
-                self.profile = InstallProfile.parse(
+                self.profile: InstallProfile = InstallProfile.parse(
                     json.loads(archive.read("install_profile.json"))
                 )
                 self.version_json: dict[str, Any] = json.loads(
@@ -223,6 +223,32 @@ class InstallerJar:
         return dest
 
 
+# Characters that open a variable or a literal, and what closes each.
+CLOSERS = {"{": "}", "'": "'"}
+
+
+def _escaped(value: str, index: int) -> tuple[str, int]:
+    """Return the character after a backslash, and the index after it."""
+    if index == len(value):
+        raise LoaderError(f"Bad escape in pattern: {value}")
+    return value[index], index + 1
+
+
+def _read_until(value: str, index: int, opener: str) -> tuple[str, int]:
+    """Read up to the character that closes ``opener``, resolving escapes."""
+    text: list[str] = []
+    while True:
+        if index == len(value):
+            raise LoaderError(f"Unclosed {opener} in pattern: {value}")
+        char = value[index]
+        index += 1
+        if char == "\\":
+            char, index = _escaped(value, index)
+        elif char == CLOSERS[opener]:
+            return "".join(text), index
+        text.append(char)
+
+
 def replace_tokens(tokens: dict[str, str], value: str) -> str:
     """Expand ``{NAME}`` and ``'literal'`` as the installer format defines them.
 
@@ -237,44 +263,20 @@ def replace_tokens(tokens: dict[str, str], value: str) -> str:
         LoaderError: The text is malformed or uses an unknown variable.
     """
     result: list[str] = []
-    closers = {"{": "}", "'": "'"}
     index = 0
-
-    def escaped() -> str:
-        nonlocal index
-        if index == len(value):
-            raise LoaderError(f"Bad escape in pattern: {value}")
-        char = value[index]
-        index += 1
-        return char
-
     while index < len(value):
         char = value[index]
         index += 1
         if char == "\\":
-            result.append(escaped())
-        elif char in closers:
-            key: list[str] = []
-            while True:
-                if index == len(value):
-                    raise LoaderError(f"Unclosed {char} in pattern: {value}")
-                inner = value[index]
-                index += 1
-                if inner == "\\":
-                    key.append(escaped())
-                elif inner == closers[char]:
-                    break
-                else:
-                    key.append(inner)
-            name = "".join(key)
-            if char == "'":
-                result.append(name)
-            elif name in tokens:
-                result.append(tokens[name])
-            else:
-                raise LoaderError(f"Unknown variable {name} in pattern: {value}")
-        else:
-            result.append(char)
+            char, index = _escaped(value, index)
+        elif char in CLOSERS:
+            name, index = _read_until(value, index, char)
+            if char == "{":
+                if name not in tokens:
+                    raise LoaderError(f"Unknown variable {name} in pattern: {value}")
+                name = tokens[name]
+            char = name
+        result.append(char)
     return "".join(result)
 
 

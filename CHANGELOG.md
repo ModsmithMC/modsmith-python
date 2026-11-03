@@ -6,6 +6,21 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- `Platform.latest_release` returns a project's newest release for a game
+  version and loader in one call, falling back from Quilt to Fabric.
+
+### Removed
+
+- `Instance.open`. Use `Instance(path)`.
+- `modsmith.java.platform_key` and `modsmith.java.official_runtime_dirs`
+  are no longer part of the public API.
+- `InstallProfile`, `InstallerJar`, `Library` and `Processor` are no longer
+  exported from `modsmith.loaders`.
+- `Launcher.profile_files`, `Profile.from_dict` and
+  `ProcessorLoader.fetch_installer` are now private.
+
 ## [0.3.0] - 2026-11-03
 
 ### Added

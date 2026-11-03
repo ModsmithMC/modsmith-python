@@ -36,7 +36,7 @@ def client(tmp_path):
 
 def test_requires_launcher_to_have_run(client):
     with pytest.raises(LauncherError):
-        client.profile_files()
+        client._profile_files()
 
 
 def test_add_profile_stores_an_absolute_game_directory(client, tmp_path):

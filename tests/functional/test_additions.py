@@ -96,7 +96,7 @@ def test_mods_need_a_loader(tmp_path):
 
 def test_plan_needs_an_instance(tmp_path):
     with pytest.raises(InstanceError):
-        Instance.open(tmp_path / "nothing").plan(Catalog(release("a")), ["a"])
+        Instance(tmp_path / "nothing").plan(Catalog(release("a")), ["a"])
 
 
 def test_projects_without_a_compatible_release_are_unavailable(server, instance):
@@ -255,7 +255,7 @@ def test_sync_keeps_additions_and_disabled_pack_files(server, session, tmp_path)
     pack = load(
         write_mrpack(tmp_path / "p.mrpack", [mrpack_file("pack.jar", data, url)])
     )
-    instance = Instance.open(tmp_path / "game")
+    instance = Instance(tmp_path / "game")
     instance.sync(pack, session=session)
     catalog = Catalog(published(server, "a"))
     instance.add(instance.plan(catalog, ["a"]), session=session)
@@ -271,7 +271,7 @@ def test_sync_keeps_additions_and_disabled_pack_files(server, session, tmp_path)
 
 
 def test_pack_takes_over_an_addition_it_now_provides(server, session, tmp_path):
-    instance = Instance.open(tmp_path / "game")
+    instance = Instance(tmp_path / "game")
     empty = load(write_mrpack(tmp_path / "v1.mrpack"))
     instance.sync(empty, session=session)
     catalog = Catalog(published(server, "a"))
@@ -307,7 +307,7 @@ def test_contents_shows_where_files_came_from(server, session, tmp_path):
     pack = load(
         write_mrpack(tmp_path / "p.mrpack", [mrpack_file("pack.jar", data, url)])
     )
-    instance = Instance.open(tmp_path / "game")
+    instance = Instance(tmp_path / "game")
     instance.sync(pack, session=session)
     instance.add(instance.plan(Catalog(published(server, "a")), ["a"]), session=session)
     (instance.path / "mods" / "mine.jar.disabled").write_bytes(b"mine")
@@ -380,8 +380,23 @@ def test_state_from_older_versions_still_reads(tmp_path):
         "synced_at": "2026-11-01T00:00:00+00:00",
     }
     path.write_text(json.dumps(old))
-    state = Instance.open(tmp_path / "game").state
+    state = Instance(tmp_path / "game").state
     assert state.pack_name == "P"
     assert state.loader_kind == "fabric"
     assert state.additions == ()
     assert state.pack_refs == ()
+
+
+def test_state_from_newer_versions_still_reads(tmp_path):
+    path = tmp_path / "game" / ".modsmith" / "instance.json"
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps({"minecraft": "1.21.1", "added_later": True}))
+    assert Instance(tmp_path / "game").state.minecraft == "1.21.1"
+
+
+def test_corrupt_state_is_an_instance_error(tmp_path):
+    path = tmp_path / "game" / ".modsmith" / "instance.json"
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps({"minecraft": "1.21.1", "kept": 5}))
+    with pytest.raises(InstanceError):
+        _ = Instance(tmp_path / "game").state

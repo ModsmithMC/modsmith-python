@@ -1,32 +1,10 @@
-"""Internal helpers for files and names."""
+"""Internal helpers that write and replace files safely."""
 
 import errno
 import json
-import os
-import re
 import shutil
 from pathlib import Path
 from typing import IO, Any
-
-from platformdirs import user_cache_path
-
-
-def default_cache_dir() -> Path:
-    """Return the per-user directory used for caches by default."""
-    return user_cache_path("modsmith", appauthor=False)
-
-
-def slugify(name: str, fallback: str = "instance") -> str:
-    """Turn a display name into a lowercase, hyphenated slug.
-
-    Args:
-        name: The display name.
-        fallback: Returned when ``name`` has no ASCII letters or digits.
-
-    Returns:
-        The slug.
-    """
-    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or fallback
 
 
 def copy_replace(source: Path, dest: Path) -> None:
@@ -49,7 +27,7 @@ def replace_file(source: Path, dest: Path) -> None:
         OSError: The rename failed for another reason, or the copy failed.
     """
     try:
-        os.replace(source, dest)
+        source.replace(dest)
     except OSError as e:
         if e.errno != errno.EXDEV:
             raise
@@ -67,7 +45,7 @@ def write_atomic(path: Path, data: bytes | IO[bytes]) -> None:
     """
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_name(path.name + ".tmp")
-    with open(temp, "wb") as file:
+    with temp.open("wb") as file:
         if isinstance(data, bytes):
             file.write(data)
         else:

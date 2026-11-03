@@ -4,20 +4,27 @@ import pytest
 
 import modsmith as ms
 
-MODULES = [
-    "errors",
-    "instances",
-    "java",
-    "launcher",
-    "loaders",
-    "metadata",
-    "minecraft",
-    "net",
-    "packs",
-    "platforms",
-    "progress",
-]
-STABLE = {
+# The complete public API. Adding or removing a name is a deliberate change:
+# update this list, the reference pages and the changelog together.
+PUBLIC = {
+    "errors": {
+        "Cancelled",
+        "DependencyError",
+        "DownloadError",
+        "InstanceError",
+        "IntegrityError",
+        "JavaError",
+        "LauncherError",
+        "LoaderError",
+        "LockedError",
+        "ModsmithError",
+        "NetworkError",
+        "PackError",
+        "PlatformError",
+        "ProcessorError",
+        "UnresolvedEntriesError",
+        "UnsupportedError",
+    },
     "instances": {
         "Addition",
         "Changes",
@@ -26,38 +33,74 @@ STABLE = {
         "InstanceState",
         "Plan",
     },
-    "metadata": {"Metadata", "read"},
-    "launcher": {"Launcher", "Profile", "icon_data_uri", "is_running"},
-    "net": {"Resource", "Session", "download", "file_hash"},
     "java": {"JavaRuntime", "download", "find", "find_all", "required_for"},
-    "loaders": {"Fabric", "Forge", "Loader", "NeoForge", "Quilt", "create", "parse"},
-    "packs": {"Modpack", "PackEntry", "load"},
+    "launcher": {"Launcher", "Profile", "icon_data_uri", "is_running"},
+    "loaders": {
+        "Fabric",
+        "Forge",
+        "Loader",
+        "MetaLoader",
+        "NeoForge",
+        "ProcessorLoader",
+        "Quilt",
+        "create",
+        "parse",
+        "register",
+    },
+    "metadata": {"Metadata", "read"},
+    "minecraft": {
+        "GameDir",
+        "MavenCoord",
+        "Version",
+        "VersionInfo",
+        "install_version",
+        "list_versions",
+        "maven_path",
+    },
+    "net": {"Resource", "Session", "download", "file_hash"},
+    "packs": {
+        "CurseForgePack",
+        "FileRef",
+        "Modpack",
+        "Mrpack",
+        "PackEntry",
+        "PackFormat",
+        "Side",
+        "Support",
+        "load",
+        "register",
+        "safe_relative",
+    },
     "platforms": {
+        "Conflict",
         "CurseForge",
         "Dependency",
+        "DependencyKind",
+        "MissingDependency",
         "Modrinth",
         "Platform",
         "Project",
+        "ProjectType",
         "Release",
+        "ReleaseFile",
+        "ReleaseType",
+        "Resolution",
+        "SearchResults",
         "resolve_dependencies",
     },
-    "minecraft": {"GameDir", "Version", "install_version", "list_versions"},
+    "progress": {"CancelToken", "Progress", "ProgressCallback", "report"},
 }
 
 
-def test_top_level_exports_exist():
+def test_top_level_names():
+    assert set(ms.__all__) == {"CancelToken", "Progress", "__version__", *PUBLIC}
     for name in ms.__all__:
         assert hasattr(ms, name)
 
 
-@pytest.mark.parametrize("name", MODULES)
-def test_module_exports_exist_and_are_public(name):
+@pytest.mark.parametrize(("name", "exports"), PUBLIC.items())
+def test_module_exports_match_the_public_list(name, exports):
     module = importlib.import_module(f"modsmith.{name}")
+    assert set(module.__all__) == exports
     for item in module.__all__:
         assert hasattr(module, item)
-        assert not item.startswith("_")
-
-
-@pytest.mark.parametrize(("name", "exports"), STABLE.items())
-def test_stable_exports(name, exports):
-    assert exports <= set(importlib.import_module(f"modsmith.{name}").__all__)

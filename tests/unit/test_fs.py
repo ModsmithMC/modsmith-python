@@ -1,18 +1,18 @@
-import os
 from pathlib import Path
 
 import pytest
 
 import modsmith as ms
-from modsmith._support import copy_replace, replace_file, slugify, write_atomic
+from modsmith._fs import copy_replace, replace_file, write_atomic
 from modsmith.errors import Cancelled
+from modsmith.launcher import _slugify as slugify
 
 
 def test_write_atomic_creates_parents_and_leaves_no_temp_file(tmp_path):
     path = tmp_path / "a" / "b" / "c.txt"
     write_atomic(path, b"x")
     assert path.read_bytes() == b"x"
-    assert os.listdir(path.parent) == ["c.txt"]
+    assert [item.name for item in path.parent.iterdir()] == ["c.txt"]
 
 
 def test_copy_replace_overwrites_and_removes_source(tmp_path):
@@ -28,7 +28,7 @@ def test_copy_replace_overwrites_and_removes_source(tmp_path):
 def test_replace_file_crosses_real_filesystems(tmp_path):
     other = Path.cwd() / ".pytest_cache" / "cross-device"
     other.mkdir(parents=True, exist_ok=True)
-    if os.stat(other).st_dev == os.stat(tmp_path).st_dev:
+    if other.stat().st_dev == tmp_path.stat().st_dev:
         pytest.skip("the working directory and temp share a filesystem")
     source = tmp_path / "a.part"
     dest = other / "a"

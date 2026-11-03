@@ -80,6 +80,12 @@ The newest release is not always for the newest game version, so pass `game_vers
 release = next(modrinth.iter_releases(project, game_version="1.21.1"), None)
 ```
 
+`latest_release` does the same in one call, and returns `None` when nothing matches. For the Quilt loader it falls back to a Fabric release, because Quilt loads Fabric mods:
+
+```python
+release = modrinth.latest_release(project, game_version="1.21.1", loader="quilt")
+```
+
 `list_releases` returns every release at once. It has to read every page, which can take many requests on a large CurseForge project.
 
 ## Download

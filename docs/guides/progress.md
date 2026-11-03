@@ -15,7 +15,7 @@ def show(event: ms.Progress) -> None:
 
 
 pack = ms.packs.load("pack.mrpack")
-instance = ms.instances.Instance.open("instances/my-pack")
+instance = ms.instances.Instance("instances/my-pack")
 
 instance.sync(pack, progress=show)
 ```

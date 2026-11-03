@@ -10,8 +10,7 @@ import pytest
 
 import modsmith as ms
 from modsmith.errors import Cancelled, ProcessorError
-from modsmith.loaders import Processor
-from modsmith.loaders._install_profile import Variables
+from modsmith.loaders._install_profile import Processor, Variables
 from modsmith.loaders._processors import run_processors, verify_outputs
 from modsmith.minecraft import maven_path
 from tests.lib.builders import sha1
