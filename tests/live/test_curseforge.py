@@ -1,6 +1,7 @@
 """Set CURSEFORGE_API_KEY to run these; they are skipped without it."""
 
 import os
+import re
 from itertools import islice
 
 import pytest
@@ -254,3 +255,13 @@ def test_bulk_lookup(curseforge):
     found = curseforge.get_projects([str(JEI), "238223000", "not-a-number"])
     assert set(found) == {str(JEI)}
     assert found[str(JEI)].slug == "jei"
+
+
+def test_changelogs_are_plain_text(curseforge):
+    project = curseforge.get_project(JEI, project_type="mod")
+    release = next(curseforge.iter_releases(project))
+    assert release.version is None
+    text = curseforge.changelog(release)
+    assert text
+    # Text may hold angle brackets, as in an email address, but no tags.
+    assert not re.search(r"</?(a|br|div|h[1-6]|li|p|ul)", text)

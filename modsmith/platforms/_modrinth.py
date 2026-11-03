@@ -177,6 +177,7 @@ class _Version(BaseModel):
     id: str
     project_id: str
     name: str
+    version_number: str | None = None
     version_type: Literal["release", "beta", "alpha"] = "release"
     date_published: str = ""
     game_versions: list[str] = Field(default_factory=list[str])
@@ -367,6 +368,7 @@ class Modrinth(Platform):
             id=version.id,
             project_id=version.project_id,
             name=version.name,
+            version=version.version_number,
             release_type=version.version_type,
             published=version.date_published,
             game_versions=tuple(version.game_versions),
@@ -399,6 +401,21 @@ class Modrinth(Platform):
         """
         data = self._get(f"/version/{release_id}")
         return self._to_release(_Version.model_validate(data))
+
+    def changelog(self, release: Release) -> str:
+        """Return what changed in a release. Modrinth changelogs are Markdown.
+
+        Args:
+            release: The release.
+
+        Returns:
+            The changelog, or an empty string if there is none.
+
+        Raises:
+            NetworkError: Modrinth could not be reached or does not know it.
+        """
+        data = self._get(f"/version/{release.id}")
+        return str(data.get("changelog") or "").strip()
 
     def identify(
         self,

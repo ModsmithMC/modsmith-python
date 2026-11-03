@@ -117,6 +117,15 @@ if release is not None:
 
 Each release can have several files. `release.primary_file` is the one `fetch` uses, and `release.files` lists them all.
 
+`release.version` is the version label its author gave, such as `0.6.0`, or `None` on CurseForge, which has none. To show what a release changed, fetch its changelog as plain text:
+
+```python
+if release is not None:
+    print(modrinth.changelog(release)[:200])
+```
+
+Modrinth changelogs are Markdown, which reads well as it is. CurseForge's are HTML, and Modsmith turns them into text, with list items as `-` lines.
+
 ```python
 modrinth.close()
 ```

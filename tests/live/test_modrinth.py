@@ -259,3 +259,9 @@ def test_bulk_lookup(modrinth):
     )
     assert set(found) == {LARGE_PROJECT, DEPENDENT_PROJECT}
     assert found[LARGE_PROJECT].game_versions
+
+
+def test_releases_carry_a_version_label_and_a_changelog(modrinth):
+    release = next(modrinth.iter_releases(modrinth.get_project(LARGE_PROJECT)))
+    assert release.version
+    assert modrinth.changelog(release)

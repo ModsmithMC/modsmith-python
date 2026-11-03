@@ -15,6 +15,9 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   platform serves at once; the extra pages are read for you.
 - `Project` gains `author`, `categories`, `updated`, `follows` and
   `game_versions`, filled the same way on both platforms.
+- `Release.version` holds the version label its author gave, and
+  `Platform.changelog` returns what a release changed as plain text, converted
+  from HTML on CurseForge.
 - `Platform.get_projects` looks up many projects at once. `Instance.plan`,
   `Instance.plan_updates` and `Instance.adopt` use it, so they need far fewer
   requests.
