@@ -6,13 +6,16 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 from .._locks import GAME_LOCK, file_lock
+from ..errors import NetworkError
 from ..minecraft import GameDir, install_version, maven_path
 from ..net import Resource, Session, download
 from ..net._session import session_scope
 from ..progress import CancelToken, ProgressCallback
-from ._base import Loader, register
+from ._base import Loader, LoaderVersion, is_stable, recommend, register
 
 HASH_FIELDS = ("sha512", "sha256", "sha1", "md5")
+# The metadata services answer these for a Minecraft version they do not know.
+UNKNOWN_VERSION = (400, 404)
 
 
 @dataclass(frozen=True)
@@ -30,6 +33,55 @@ class MetaLoader(Loader):
     @abstractmethod
     def profile_url(self) -> str:
         """Return where this loader's version JSON is served."""
+
+    @classmethod
+    def available(
+        cls,
+        minecraft: str,
+        *,
+        session: Session | None = None,
+        meta_url: str | None = None,
+    ) -> list[LoaderVersion]:
+        """List this loader's versions for a Minecraft version, newest first.
+
+        Versions such as ``0.20.0-beta.9`` are pre-releases. Fabric marks only
+        its current build as stable, so that one is recommended; otherwise the
+        newest stable version is.
+
+        Args:
+            minecraft: The Minecraft version.
+            session: The session to use. A temporary one is created if omitted.
+            meta_url: The metadata service. Defaults to the loader's own.
+
+        Returns:
+            The versions, empty if the service does not know the Minecraft
+            version.
+
+        Raises:
+            NetworkError: The service could not be reached.
+        """
+        base = (meta_url or cls.meta_url).rstrip("/")
+        url = f"{base}/versions/loader/{minecraft}"
+        with session_scope(session) as client:
+            response = client.request("GET", url, accept=UNKNOWN_VERSION)
+            if response.status_code in UNKNOWN_VERSION:
+                return []
+            try:
+                items: list[dict[str, Any]] = response.json()
+            except ValueError as e:
+                raise NetworkError(f"Invalid JSON from {url}") from e
+        found: list[LoaderVersion] = []
+        marked: str | None = None
+        for item in items:
+            info: dict[str, Any] = item.get("loader") or {}
+            version = info.get("version")
+            if isinstance(version, str):
+                found.append(
+                    LoaderVersion(cls.kind, version, minecraft, is_stable(version))
+                )
+                if info.get("stable") and marked is None:
+                    marked = version
+        return recommend(found, marked)
 
     def expected_id(self) -> str:
         """Return the version id that the metadata service gives this loader."""
