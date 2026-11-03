@@ -1,3 +1,4 @@
+import dataclasses
 import json
 
 import pytest
@@ -44,7 +45,9 @@ def test_mrpack_is_complete_without_network(tmp_path):
 )
 def test_mrpack_loader_names(tmp_path, key, expected):
     pack = load(write_mrpack(tmp_path / "p.mrpack", loader={key: "1"}))
+    assert pack.loader_kind == expected
     assert pack.loader.kind == expected
+    assert dataclasses.replace(pack, loader_kind=key).loader_kind == expected
 
 
 def test_mrpack_rejects_unsafe_paths(tmp_path):
