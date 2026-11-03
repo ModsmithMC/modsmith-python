@@ -6,6 +6,8 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-11-03
+
 ### Added
 
 - `Platform.latest_release` returns a project's newest release for a game
