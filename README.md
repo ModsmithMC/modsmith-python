@@ -17,12 +17,12 @@
 </p>
 
 <p align="center">
-  <a href="https://modsmithmc.org/modsmith-python/">Documentation</a> · <strong>English</strong> · <a href="README_ZH.md">简体中文</a>
+  <a href="https://modsmithmc.org/">Website</a> · <a href="https://modsmithmc.org/modsmith-python/">Documentation</a> · <strong>English</strong> · <a href="README_ZH.md">简体中文</a>
 </p>
 
 ---
 
-Modsmith is a library, not a launcher. Its small modules work together or alone, so you can build your own modpack installer, updater, CLI or GUI. To install modpacks yourself, use [Modsmith](https://github.com/ModsmithMC/modsmith), the command line built on it.
+Modsmith is a library, not a launcher. Its small modules work together or alone, so you can build your own modpack installer, updater, CLI or GUI. To install modpacks yourself, use the [Modsmith command line](https://modsmithmc.org/modsmith/), which is built on it.
 
 <table>
   <tr>
@@ -259,7 +259,15 @@ flowchart LR
 
 Modsmith works alongside the official launcher. It does not sign in to accounts or start the game.
 
-The project is in alpha, so the API may change. No automated test starts the game yet. A command-line tool and a desktop app are planned.
+The project is in alpha, so the API may change. No automated test starts the game yet. The [command line](https://modsmithmc.org/modsmith/) is out, and a desktop app is planned.
+
+## Part of Modsmith
+
+| | What it is | Code |
+| :--- | :--- | :--- |
+| [Command line](https://modsmithmc.org/modsmith/) | Modpacks from your terminal | [ModsmithMC/modsmith](https://github.com/ModsmithMC/modsmith) |
+| [Python library](https://modsmithmc.org/modsmith-python/) | Build your own modpack tools | [ModsmithMC/modsmith-python](https://github.com/ModsmithMC/modsmith-python) |
+| [Website](https://modsmithmc.org/) | The project's home | [ModsmithMC/modsmithmc.github.io](https://github.com/ModsmithMC/modsmithmc.github.io) |
 
 ## Contributing
 
