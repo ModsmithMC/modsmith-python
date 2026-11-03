@@ -135,7 +135,7 @@ launcher.add_profile(pack.name, version_id, instance.path)
     <p class="lede">Modsmith needs Python 3.12 or newer.</p>
     <div class="actions centered">
       <a class="button primary" href="get-started/installation/">Get started</a>
-      <a class="button" href="https://modsmithmc.org/modsmith/">Just want to play? Use the command line</a>
+      <a class="button" href="https://modsmithmc.org/modsmith-cli/">Just want to play? Use the command line</a>
     </div>
   </div>
 </div>

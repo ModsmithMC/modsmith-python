@@ -22,7 +22,7 @@
 
 ---
 
-Modsmith 是一个库，不是启动器。它的小模块既能配合使用，也能单独使用，你可以用它们搭建自己的整合包安装器、更新器、命令行工具或图形界面。如果只是想自己安装整合包，请使用基于它构建的 [Modsmith 命令行](https://modsmithmc.org/modsmith/)。
+Modsmith 是一个库，不是启动器。它的小模块既能配合使用，也能单独使用，你可以用它们搭建自己的整合包安装器、更新器、命令行工具或图形界面。如果只是想自己安装整合包，请使用基于它构建的 [Modsmith 命令行](https://modsmithmc.org/modsmith-cli/)。
 
 <table>
   <tr>
@@ -259,13 +259,13 @@ flowchart LR
 
 Modsmith 配合官方启动器使用，不负责账号登录，也不负责启动游戏。
 
-项目处于 alpha 阶段，API 可能会变化。目前还没有自动测试实际启动游戏。[命令行](https://modsmithmc.org/modsmith/)已经发布，桌面应用正在计划中。
+项目处于 alpha 阶段，API 可能会变化。目前还没有自动测试实际启动游戏。[命令行](https://modsmithmc.org/modsmith-cli/)已经发布，桌面应用正在计划中。
 
 ## Modsmith 的组成
 
 | | 简介 | 代码 |
 | :--- | :--- | :--- |
-| [命令行](https://modsmithmc.org/modsmith/) | 在终端里安装整合包 | [ModsmithMC/modsmith](https://github.com/ModsmithMC/modsmith) |
+| [命令行](https://modsmithmc.org/modsmith-cli/) | 在终端里安装整合包 | [ModsmithMC/modsmith-cli](https://github.com/ModsmithMC/modsmith-cli) |
 | [Python 库](https://modsmithmc.org/modsmith-python/) | 打造你自己的整合包工具 | [ModsmithMC/modsmith-python](https://github.com/ModsmithMC/modsmith-python) |
 | [网站](https://modsmithmc.org/) | 项目主页 | [ModsmithMC/modsmithmc.github.io](https://github.com/ModsmithMC/modsmithmc.github.io) |
 
