@@ -62,6 +62,8 @@ CLASS_FOLDERS = {
     6945: "datapacks",
 }
 LOADER_TYPES = {"forge": 1, "fabric": 4, "quilt": 5, "neoforge": 6}
+# Without a sort field, search results come back in no useful order.
+SORT_BY_POPULARITY = 2
 
 
 class _Schema(BaseModel):
@@ -241,7 +243,7 @@ class CurseForge(Platform):
         offset: int = 0,
         limit: int = 20,
     ) -> SearchResults:
-        """Search CurseForge's catalogue.
+        """Search CurseForge's catalogue, most popular first.
 
         Args:
             query: The search text.
@@ -260,6 +262,8 @@ class CurseForge(Platform):
         data = self._search(
             project_type,
             searchFilter=query,
+            sortField=SORT_BY_POPULARITY,
+            sortOrder="desc",
             gameVersion=game_version,
             modLoaderType=LOADER_TYPES.get(loader or ""),
             index=offset,

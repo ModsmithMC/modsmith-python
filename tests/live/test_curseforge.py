@@ -212,3 +212,8 @@ def test_add_a_mod_with_its_dependencies(curseforge, tmp_path):
         assert (instance.path / item.path).is_file()
     instance.remove(release.project_id)
     assert instance.additions == ()
+
+
+def test_search_puts_the_best_match_first(curseforge):
+    results = curseforge.search("jei", project_type="mod", limit=3)
+    assert results.projects[0].id == str(JEI)

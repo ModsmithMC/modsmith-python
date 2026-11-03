@@ -21,6 +21,11 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `Launcher.profile_files`, `Profile.from_dict` and
   `ProcessorLoader.fetch_installer` are now private.
 
+### Fixed
+
+- CurseForge searches return the most popular matches first. Before, they came
+  back in no useful order, so searching for `jei` did not find JEI.
+
 ## [0.3.0] - 2026-11-03
 
 ### Added
