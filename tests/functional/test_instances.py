@@ -7,10 +7,16 @@ import tracemalloc
 import pytest
 
 import modsmith as ms
-from modsmith.errors import Cancelled, InstanceError, UnresolvedEntriesError
+from modsmith.errors import (
+    Cancelled,
+    InstanceError,
+    LockedError,
+    UnresolvedEntriesError,
+)
 from modsmith.instances import Instance
 from modsmith.packs import PackEntry, load
 from tests.lib.builders import mrpack_file, sha1, write_mrpack
+from tests.lib.locks import held_elsewhere
 from tests.lib.server import Reply
 
 
@@ -450,3 +456,28 @@ def test_corrupt_state_is_reported(instance):
     path.write_text(json.dumps({"nope": 1}), encoding="utf-8")
     with pytest.raises(InstanceError):
         _ = instance.state
+
+
+def test_sync_refuses_an_instance_in_use(server, session, instance, tmp_path):
+    pack = pack_of(tmp_path, [mod(server, "a.jar", b"a")])
+    lock = instance.path / ".modsmith" / "lock"
+    with held_elsewhere(lock), pytest.raises(LockedError):
+        instance.sync(pack, session=session)
+    assert not (instance.path / "mods").exists()
+    assert instance.sync(pack, session=session).added == ("mods/a.jar",)
+
+
+def test_delete_refuses_an_instance_in_use(server, session, instance, tmp_path):
+    pack = pack_of(tmp_path, [mod(server, "a.jar", b"a")])
+    instance.sync(pack, session=session)
+    lock = instance.path / ".modsmith" / "lock"
+    with held_elsewhere(lock), pytest.raises(LockedError):
+        instance.delete()
+    assert (instance.path / "mods" / "a.jar").is_file()
+
+
+def test_delete_removes_the_lock_file_too(server, session, instance, tmp_path):
+    pack = pack_of(tmp_path, [mod(server, "a.jar", b"a")])
+    instance.sync(pack, session=session)
+    instance.delete()
+    assert not instance.path.exists()

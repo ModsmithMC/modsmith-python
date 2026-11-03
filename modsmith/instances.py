@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from ._locks import file_lock
 from ._support import replace_file, write_atomic, write_json
 from .errors import InstanceError, UnresolvedEntriesError
 from .net import Session, download, file_hash
@@ -24,10 +25,12 @@ from .progress import CancelToken, ProgressCallback, report
 
 __all__ = ["Changes", "Instance", "InstanceState"]
 
-STATE_FILE = ".modsmith/instance.json"
-STAGING_DIR = ".modsmith/staging"
-BACKUP_DIR = ".modsmith/backup"
-HASH_CACHE = ".modsmith/hashes.json"
+STATE_DIR = ".modsmith"
+STATE_FILE = f"{STATE_DIR}/instance.json"
+STAGING_DIR = f"{STATE_DIR}/staging"
+BACKUP_DIR = f"{STATE_DIR}/backup"
+HASH_CACHE = f"{STATE_DIR}/hashes.json"
+LOCK_FILE = f"{STATE_DIR}/lock"
 CACHE_SETTLE_NS = 2_000_000_000
 
 
@@ -233,6 +236,11 @@ class Instance:
         return self.path / STATE_FILE
 
     @property
+    def _lock_path(self) -> Path:
+        """The file that keeps two syncs out of this directory."""
+        return self.path / LOCK_FILE
+
+    @property
     def _staging_dir(self) -> Path:
         """Where new files wait until every one of them is ready."""
         return self.path / STAGING_DIR
@@ -435,6 +443,7 @@ class Instance:
             What changed.
 
         Raises:
+            LockedError: Another sync or delete is using this instance.
             UnresolvedEntriesError: Entries are still missing. Nothing has been
                 changed.
             InstanceError: The state file is corrupt, or a file could not be
@@ -444,7 +453,9 @@ class Instance:
             DownloadError: A file could not be downloaded.
             Cancelled: ``cancel`` was triggered.
         """
-        self._restore_backup()
+        if self._backup_dir.is_dir():
+            with file_lock(self._lock_path, wait=0):
+                self._restore_backup()
         cache = _HashCache(self.path)
         targets, unresolved = _targets(pack, side, include_optional, cache)
         folders = [Path(folder) for folder in adopt_from]
@@ -458,28 +469,29 @@ class Instance:
         if missing:
             raise UnresolvedEntriesError(missing)
 
-        changes = self._classify(targets, unresolved, cache)
-        pending = [*changes.added, *changes.updated]
-        if overwrite:
-            pending.extend(changes.conflicts)
-        with session_scope(session) as client:
-            staged = self._stage(
-                pack,
-                side,
-                targets,
-                pending,
-                adopted,
-                session=client,
-                max_workers=max_workers,
-                progress=progress,
-                cancel=cancel,
-            )
-        if cancel is not None:
-            cancel.check()
-        self._commit(staged, changes.removed)
-        self._record(pack, targets, changes, overwrite, cache)
-        cache.save()
-        return changes
+        with file_lock(self._lock_path, wait=0):
+            changes = self._classify(targets, unresolved, cache)
+            pending = [*changes.added, *changes.updated]
+            if overwrite:
+                pending.extend(changes.conflicts)
+            with session_scope(session) as client:
+                staged = self._stage(
+                    pack,
+                    side,
+                    targets,
+                    pending,
+                    adopted,
+                    session=client,
+                    max_workers=max_workers,
+                    progress=progress,
+                    cancel=cancel,
+                )
+            if cancel is not None:
+                cancel.check()
+            self._commit(staged, changes.removed)
+            self._record(pack, targets, changes, overwrite, cache)
+            cache.save()
+            return changes
 
     def _commit(self, staged: list[str], removed: tuple[str, ...]) -> None:
         """Move staged files into place, undoing everything if a move fails."""
@@ -518,7 +530,17 @@ class Instance:
 
         Raises:
             InstanceError: The directory has no state from a previous sync.
+            LockedError: A sync is using this instance.
         """
         if self.state is None:
             raise InstanceError(f"{self.path} is not a modsmith instance")
+        with file_lock(self._lock_path, wait=0):
+            # Windows cannot delete the open lock file, so that part goes last.
+            for path in self.path.iterdir():
+                if path.name == STATE_DIR:
+                    continue
+                if path.is_dir() and not path.is_symlink():
+                    shutil.rmtree(path)
+                else:
+                    path.unlink()
         shutil.rmtree(self.path)

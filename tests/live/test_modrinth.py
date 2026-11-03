@@ -3,11 +3,13 @@ import json
 import pytest
 
 import modsmith as ms
+from modsmith.errors import NetworkError
 
 USER_AGENT = "modsmith-tests/0.1"
 PROJECT = "fabulously-optimized"
 MINECRAFT = "1.21.1"
 LARGE_PROJECT = "sodium"
+DEPENDENT_PROJECT = "iris"
 PAGE_SIZE = 100
 
 
@@ -98,3 +100,69 @@ def test_full_modpack_install(modrinth, tmp_path):
     key = launcher.add_profile(pack.name, version_id, game_dir, memory_mb=4096)
     profiles = json.loads((game.path / "launcher_profiles.json").read_text("utf-8"))
     assert profiles["profiles"][key]["lastVersionId"] == version_id
+
+
+def with_required_dependency(modrinth, slug):
+    project = modrinth.get_project(slug)
+    releases = modrinth.iter_releases(project, game_version=MINECRAFT, loader="fabric")
+    return next(
+        item
+        for item in releases
+        if any(dependency.kind == "required" for dependency in item.dependencies)
+    )
+
+
+def test_releases_list_dependencies(modrinth):
+    release = with_required_dependency(modrinth, DEPENDENT_PROJECT)
+    assert all(
+        dependency.project_id or dependency.release_id
+        for dependency in release.dependencies
+    )
+
+
+def test_get_release_matches_the_listing(modrinth):
+    release = with_required_dependency(modrinth, DEPENDENT_PROJECT)
+    assert modrinth.get_release(release.id) == release
+
+
+def test_unknown_release_is_a_network_error(modrinth):
+    with pytest.raises(NetworkError) as error:
+        modrinth.get_release("0000000000000000")
+    assert error.value.status == 404
+
+
+def test_resolve_finds_real_dependencies(modrinth):
+    release = with_required_dependency(modrinth, DEPENDENT_PROJECT)
+    result = ms.platforms.resolve_dependencies(
+        modrinth,
+        [release],
+        game_version=MINECRAFT,
+        loader="fabric",
+        release_only=False,
+    )
+    assert result.releases[-1] == release
+    assert len(result.releases) > 1
+    assert not result.missing
+
+
+def test_identify_finds_a_downloaded_file(modrinth, tmp_path):
+    project = modrinth.get_project(LARGE_PROJECT)
+    release = next(
+        modrinth.iter_releases(project, game_version=MINECRAFT, loader="fabric")
+    )
+    path = modrinth.fetch(release, tmp_path)
+    copy = tmp_path / "copy.jar"
+    copy.write_bytes(path.read_bytes())
+    unknown = tmp_path / "unknown.jar"
+    unknown.write_bytes(b"not a real mod")
+    updates = []
+
+    found = modrinth.identify([path, copy, unknown], progress=updates.append)
+
+    assert sorted(item.name for item in found) == sorted([path.name, copy.name])
+    assert {item.id for item in found.values()} == {release.id}
+    assert updates[-1].current == updates[-1].total == 3
+
+
+def test_identify_with_nothing_makes_no_request(modrinth):
+    assert modrinth.identify([]) == {}

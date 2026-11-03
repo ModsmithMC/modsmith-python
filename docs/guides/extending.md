@@ -68,7 +68,7 @@ The most recently registered format is tried first. `safe_relative` stops a bad 
 
 ## Add a platform
 
-Subclass `Platform` and implement `search`, `get_project` and `iter_releases`. `fetch` and `list_releases` then work on their own. Override `resolve` if packs refer to your platform by id.
+Subclass `Platform` and implement `search`, `get_project` and `iter_releases`. Implement `get_release` and `identify` too if your platform can look up releases by id or by file contents. `fetch` and `list_releases` then work on their own. Override `resolve` if packs refer to your platform by id.
 
 ```python
 from collections.abc import Iterator

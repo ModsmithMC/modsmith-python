@@ -1,16 +1,20 @@
 """The CurseForge platform."""
 
 import dataclasses
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
+from pathlib import Path
 from typing import Any, ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
-from ..errors import PlatformError
+from ..errors import NetworkError, PlatformError
 from ..net import Session
 from ..packs import Modpack, PackEntry
+from ..progress import CancelToken, ProgressCallback
 from ._base import (
+    Dependency,
+    DependencyKind,
     Platform,
     Project,
     ProjectType,
@@ -18,8 +22,10 @@ from ._base import (
     ReleaseFile,
     ReleaseType,
     SearchResults,
+    digest_files,
     project_ref,
 )
+from ._fingerprint import fingerprint
 
 API_URL = "https://api.curseforge.com"
 # Minecraft's id on CurseForge.
@@ -32,6 +38,14 @@ MAX_RESULTS = 10000
 # CurseForge's numeric ids for hash algorithms, release types and categories.
 HASH_ALGORITHMS = {1: "sha1", 2: "md5"}
 RELEASE_TYPES: dict[int, ReleaseType] = {1: "release", 2: "beta", 3: "alpha"}
+RELATION_KINDS: dict[int, DependencyKind] = {
+    1: "embedded",  # EmbeddedLibrary
+    2: "optional",  # OptionalDependency
+    3: "required",  # RequiredDependency
+    4: "optional",  # Tool
+    5: "incompatible",  # Incompatible
+    6: "embedded",  # Include
+}
 PROJECT_CLASSES: dict[str, int] = {
     "mod": 6,
     "modpack": 4471,
@@ -62,6 +76,13 @@ class _Hash(_Schema):
     algo: int
 
 
+class _Dependency(_Schema):
+    """A file's dependency from the CurseForge API."""
+
+    mod_id: int
+    relation_type: int
+
+
 class _File(_Schema):
     """A file from the CurseForge API."""
 
@@ -76,6 +97,8 @@ class _File(_Schema):
     hashes: list[_Hash] = Field(default_factory=list[_Hash])
     is_server_pack: bool | None = False
     game_versions: list[str] = Field(default_factory=list[str])
+    dependencies: list[_Dependency] = Field(default_factory=list[_Dependency])
+    file_fingerprint: int | None = None
 
     @property
     def hash_map(self) -> dict[str, str]:
@@ -98,6 +121,11 @@ class _File(_Schema):
             published=self.file_date,
             game_versions=tuple(self.game_versions),
             files=(ReleaseFile(self.file_name, urls, self.hash_map, self.file_length),),
+            dependencies=tuple(
+                Dependency(RELATION_KINDS[item.relation_type], str(item.mod_id))
+                for item in self.dependencies
+                if item.relation_type in RELATION_KINDS
+            ),
         )
 
 
@@ -310,12 +338,73 @@ class CurseForge(Platform):
             if not page or index >= pagination.get("totalCount", 0):
                 return
 
+    def get_release(self, release_id: str) -> Release:
+        """Look up a release by id.
+
+        Args:
+            release_id: The file's id.
+
+        Returns:
+            The release.
+
+        Raises:
+            PlatformError: CurseForge does not know the id.
+            NetworkError: CurseForge could not be reached.
+        """
+        file = self._files([int(release_id)]).get(int(release_id))
+        if file is None:
+            raise PlatformError(f"No CurseForge file has the id {release_id}")
+        return file.to_release(self.name)
+
+    def identify(
+        self,
+        paths: Iterable[Path | str],
+        *,
+        progress: ProgressCallback | None = None,
+        cancel: CancelToken | None = None,
+    ) -> dict[Path, Release]:
+        """Find the releases that files came from, by their fingerprints.
+
+        Args:
+            paths: The files.
+            progress: Receives an update as each file is read.
+            cancel: Stops reading files.
+
+        Returns:
+            The release of each file CurseForge knows. Other files are left out.
+
+        Raises:
+            OSError: A file could not be read.
+            NetworkError: CurseForge could not be reached.
+            Cancelled: ``cancel`` was triggered.
+        """
+        groups = digest_files(paths, fingerprint, progress, cancel)
+        values = sorted(groups)
+        releases: dict[Path, Release] = {}
+        for start in range(0, len(values), BATCH_SIZE):
+            payload = {"fingerprints": values[start : start + BATCH_SIZE]}
+            data = self._post(f"/v1/fingerprints/{GAME_ID}", payload)
+            for match in data["data"]["exactMatches"]:
+                file = _File.model_validate(match["file"])
+                if file.file_fingerprint in groups:
+                    release = file.to_release(self.name)
+                    releases.update(
+                        dict.fromkeys(groups[file.file_fingerprint], release)
+                    )
+        return releases
+
     def _files(self, file_ids: list[int]) -> dict[int, _File]:
         """Fetch files by id, in batches."""
         files: dict[int, _File] = {}
         for start in range(0, len(file_ids), BATCH_SIZE):
             batch = file_ids[start : start + BATCH_SIZE]
-            data = self._post("/v1/mods/files", {"fileIds": batch})
+            try:
+                data = self._post("/v1/mods/files", {"fileIds": batch})
+            except NetworkError as e:
+                # CurseForge answers 404 when none of the ids exist.
+                if e.status == 404:
+                    continue
+                raise
             for item in data["data"]:
                 file = _File.model_validate(item)
                 files[file.id] = file

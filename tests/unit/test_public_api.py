@@ -23,7 +23,15 @@ STABLE = {
     "java": {"JavaRuntime", "download", "find", "find_all", "required_for"},
     "loaders": {"Fabric", "Forge", "Loader", "NeoForge", "Quilt", "create", "parse"},
     "packs": {"Modpack", "PackEntry", "load"},
-    "platforms": {"CurseForge", "Modrinth", "Platform", "Project", "Release"},
+    "platforms": {
+        "CurseForge",
+        "Dependency",
+        "Modrinth",
+        "Platform",
+        "Project",
+        "Release",
+        "resolve_dependencies",
+    },
     "minecraft": {"GameDir", "Version", "install_version", "list_versions"},
 }
 

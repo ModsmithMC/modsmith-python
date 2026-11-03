@@ -1,10 +1,14 @@
 import json
+import threading
 
 import pytest
 
-from modsmith.errors import UnsupportedError
+import modsmith as ms
+from modsmith._locks import GAME_LOCK
+from modsmith.errors import Cancelled, UnsupportedError
 from modsmith.minecraft import install_version, list_versions
 from tests.lib.builders import sha1
+from tests.lib.locks import held_elsewhere
 
 
 def publish_version(server, jar=b"client"):
@@ -67,3 +71,19 @@ def test_unknown_version_is_rejected(server, session, game):
     url = server.add_json("/manifest.json", {"versions": []})
     with pytest.raises(UnsupportedError):
         install_version(game, "9.9", session=session, manifest_url=url)
+
+
+def test_install_waits_for_the_game_directory(server, session, game):
+    manifest = publish_version(server)
+    token = ms.CancelToken()
+    threading.Timer(0.2, token.cancel).start()
+    with held_elsewhere(game.path / GAME_LOCK), pytest.raises(Cancelled):
+        install_version(
+            game, "1.21.1", session=session, cancel=token, manifest_url=manifest
+        )
+    assert not game.has_version("1.21.1")
+
+    with held_elsewhere(game.path / GAME_LOCK) as holder:
+        threading.Timer(0.2, holder.communicate).start()
+        install_version(game, "1.21.1", session=session, manifest_url=manifest)
+    assert game.has_version("1.21.1")

@@ -1,17 +1,18 @@
 """The data types and interface shared by every platform."""
 
 from abc import ABC, abstractmethod
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import TracebackType
 from typing import ClassVar, Literal, Self
 
-from ..errors import PlatformError
+from ..errors import PlatformError, UnsupportedError
 from ..net import Resource, Session, download
 from ..packs import Modpack
-from ..progress import CancelToken, ProgressCallback
+from ..progress import CancelToken, ProgressCallback, report
 
+DependencyKind = Literal["required", "optional", "incompatible", "embedded"]
 ProjectType = Literal["mod", "modpack", "resourcepack", "shader"]
 ReleaseType = Literal["release", "beta", "alpha"]
 
@@ -63,6 +64,22 @@ class ReleaseFile:
 
 
 @dataclass(frozen=True)
+class Dependency:
+    """Another project or release that a release relates to.
+
+    Attributes:
+        kind: How the release relates to it. ``embedded`` means the release
+            already contains it.
+        project_id: The project's id, or None if the platform names only a release.
+        release_id: The exact release, or None if any compatible one will do.
+    """
+
+    kind: DependencyKind
+    project_id: str | None = None
+    release_id: str | None = None
+
+
+@dataclass(frozen=True)
 class Release:
     """One published version: a CurseForge File or a Modrinth Version.
 
@@ -76,6 +93,7 @@ class Release:
         game_versions: The Minecraft versions it supports.
         loaders: The mod loaders it supports.
         files: The files it contains.
+        dependencies: What it needs, works with or conflicts with.
     """
 
     platform: str
@@ -87,6 +105,7 @@ class Release:
     game_versions: tuple[str, ...] = ()
     loaders: tuple[str, ...] = ()
     files: tuple[ReleaseFile, ...] = ()
+    dependencies: tuple[Dependency, ...] = ()
 
     @property
     def primary_file(self) -> ReleaseFile:
@@ -121,6 +140,23 @@ class SearchResults:
 def project_ref(ref: str | int) -> str:
     """Reduce an id, slug or project URL to the id or slug."""
     return str(ref).rstrip("/").rsplit("/", 1)[-1]
+
+
+def digest_files[T](
+    paths: Iterable[Path | str],
+    digest: Callable[[Path], T],
+    progress: ProgressCallback | None,
+    cancel: CancelToken | None,
+) -> dict[T, list[Path]]:
+    """Group files by their digest, reporting each one as it is read."""
+    files = [Path(path) for path in paths]
+    groups: dict[T, list[Path]] = {}
+    for index, path in enumerate(files):
+        if cancel is not None:
+            cancel.check()
+        groups.setdefault(digest(path), []).append(path)
+        report(progress, "identify", index + 1, len(files), "file")
+    return groups
 
 
 class Platform(ABC):
@@ -230,6 +266,48 @@ class Platform(ABC):
         Raises:
             NetworkError: The platform could not be reached.
         """
+
+    def get_release(self, release_id: str) -> Release:
+        """Look up a release by id.
+
+        Args:
+            release_id: The release's id on this platform.
+
+        Returns:
+            The release.
+
+        Raises:
+            UnsupportedError: This platform cannot look up releases. That is the
+                default.
+            PlatformError: The platform does not know the release.
+            NetworkError: The platform could not be reached.
+        """
+        raise UnsupportedError(f"{self.name} cannot look up release {release_id}")
+
+    def identify(
+        self,
+        paths: Iterable[Path | str],
+        *,
+        progress: ProgressCallback | None = None,
+        cancel: CancelToken | None = None,
+    ) -> dict[Path, Release]:
+        """Find the releases that files came from, by their contents.
+
+        Args:
+            paths: The files.
+            progress: Receives an update as each file is read.
+            cancel: Stops reading files.
+
+        Returns:
+            The release of each file the platform knows. Other files are left
+            out. By default, nothing is known.
+
+        Raises:
+            OSError: A file could not be read.
+            NetworkError: The platform could not be reached.
+            Cancelled: ``cancel`` was triggered.
+        """
+        return {}
 
     def list_releases(
         self,

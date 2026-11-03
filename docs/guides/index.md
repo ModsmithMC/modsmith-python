@@ -8,6 +8,10 @@ Each guide covers one task. They can be read in any order.
 
   Find projects on Modrinth and CurseForge, and download releases.
 
+- ![](../assets/pixel/link.svg) [Resolve dependencies](dependencies.md)
+
+  Work out which mods a mod needs, and identify files by their contents.
+
 - ![](../assets/pixel/package.svg) [Read a modpack](modpacks.md)
 
   Open an archive and see what is inside.
@@ -50,6 +54,7 @@ Each guide covers one task. They can be read in any order.
 :hidden:
 
 platforms
+dependencies
 modpacks
 loaders
 instances

@@ -30,6 +30,20 @@ Search and download from mod platforms.
    SearchResults
 ```
 
+## Dependencies
+
+```{eval-rst}
+.. autosummary::
+   :toctree: platforms
+   :nosignatures:
+
+   resolve_dependencies
+   Dependency
+   Resolution
+   Conflict
+   MissingDependency
+```
+
 ## Add a platform
 
 ```{eval-rst}
@@ -47,6 +61,7 @@ Search and download from mod platforms.
    :toctree: platforms
    :nosignatures:
 
+   DependencyKind
    ProjectType
    ReleaseType
 ```

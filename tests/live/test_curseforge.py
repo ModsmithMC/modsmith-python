@@ -16,6 +16,8 @@ LARGE_PACK = "all-the-mods-9"
 PACK_WITH_BLOCKED_MODS = "craft-craft-smp"
 PAGE_SIZE = 50
 JEI = 238222
+DEPENDENT_PROJECT = "sophisticated-backpacks"
+SMALL_MOD = "appleskin"
 
 
 @pytest.fixture
@@ -137,3 +139,52 @@ def test_install_resolved_files(curseforge, tmp_path):
     assert changes.added
     again = instance.sync(available, session=curseforge.session)
     assert again.added == again.updated == ()
+
+
+def dependent_release(curseforge):
+    project = curseforge.get_project(DEPENDENT_PROJECT, project_type="mod")
+    releases = curseforge.iter_releases(project, game_version=MINECRAFT, loader="forge")
+    return next(
+        item
+        for item in releases
+        if any(dependency.kind == "required" for dependency in item.dependencies)
+    )
+
+
+def test_get_release_matches_the_listing(curseforge):
+    release = dependent_release(curseforge)
+    assert curseforge.get_release(release.id) == release
+
+
+def test_unknown_release_is_a_platform_error(curseforge):
+    with pytest.raises(PlatformError):
+        curseforge.get_release("1")
+
+
+def test_resolve_finds_real_dependencies(curseforge):
+    release = dependent_release(curseforge)
+    result = ms.platforms.resolve_dependencies(
+        curseforge,
+        [release],
+        game_version=MINECRAFT,
+        loader="forge",
+        release_only=False,
+    )
+    assert result.releases[-1] == release
+    assert len(result.releases) > 1
+    assert not result.missing
+
+
+def test_identify_matches_the_real_fingerprint(curseforge, tmp_path):
+    project = curseforge.get_project(SMALL_MOD, project_type="mod")
+    release = next(
+        curseforge.iter_releases(project, game_version=MINECRAFT, loader="forge")
+    )
+    path = curseforge.fetch(release, tmp_path)
+    unknown = tmp_path / "unknown.jar"
+    unknown.write_bytes(b"not a real mod")
+
+    found = curseforge.identify([path, unknown])
+
+    assert list(found) == [path]
+    assert found[path].id == release.id

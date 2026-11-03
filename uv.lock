@@ -470,6 +470,7 @@ name = "modsmith"
 version = "0.1.1"
 source = { editable = "." }
 dependencies = [
+    { name = "filelock" },
     { name = "platformdirs" },
     { name = "pydantic" },
     { name = "requests" },
@@ -509,6 +510,7 @@ typing = [
 
 [package.metadata]
 requires-dist = [
+    { name = "filelock", specifier = ">=3.16" },
     { name = "platformdirs", specifier = ">=4.3" },
     { name = "pydantic", specifier = ">=2.9" },
     { name = "requests", specifier = ">=2.34.2" },

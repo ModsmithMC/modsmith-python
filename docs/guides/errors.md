@@ -21,6 +21,7 @@ Errors from your own mistakes, such as passing the wrong type, are ordinary Pyth
 | Error | Meaning |
 | :--- | :--- |
 | `Cancelled` | A `CancelToken` stopped the call |
+| `LockedError` | Another process or thread is using the same files |
 | `NetworkError` | A request failed. `status` holds the HTTP status, if there was one |
 | `DownloadError` | A download failed. `failures` lists a reason for each file |
 | `IntegrityError` | A file has the wrong size or hash |

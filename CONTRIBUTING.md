@@ -97,7 +97,7 @@ uv run sphinx-build -W -b doctest docs docs/_build/doctest
 
 | Workflow | Runs | Does |
 | :--- | :--- | :--- |
-| `ci.yml` | Pull requests and pushes to `main` | Lint, type checks, tests on every Python version on Linux and one each on Windows and macOS, lowest dependencies, documentation, package build |
+| `ci.yml` | Pull requests and pushes to `main` and `develop` | Lint, type checks, tests on every Python version on Linux and one each on Windows and macOS, lowest dependencies, documentation, package build |
 | `live.yml` | Every Monday, or by hand | Runs `tests/live` on every OS |
 | `release.yml` | `v*` tags | Runs CI, publishes to PyPI and creates a GitHub release |
 
@@ -105,9 +105,11 @@ uv run sphinx-build -W -b doctest docs docs/_build/doctest
 
 ## Releasing
 
+New versions are developed on `develop`, and `main` holds released work.
+
 1. Set `version` in `pyproject.toml` and move the `Unreleased` notes in
    `CHANGELOG.md` under the new version.
-2. Merge that change into `main`.
+2. Merge `develop` into `main`.
 3. Push a tag such as `v0.1.0`. The tag must match the project version, and
    the release notes come from that version's section of `CHANGELOG.md`.
 

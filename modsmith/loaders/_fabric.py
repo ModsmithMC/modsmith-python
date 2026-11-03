@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, ClassVar
 
+from .._locks import GAME_LOCK, file_lock
 from ..minecraft import GameDir, install_version, maven_path
 from ..net import Resource, Session, download
 from ..net._session import session_scope
@@ -107,11 +108,13 @@ class MetaLoader(Loader):
             NetworkError: The metadata service could not be reached.
             UnsupportedError: Mojang does not publish this Minecraft version.
             DownloadError: A file could not be downloaded.
+            LockedError: Another install kept the game directory for too long.
             Cancelled: ``cancel`` was triggered.
         """
         if game.has_version(self.expected_id()):
             return self.expected_id()
-        with session_scope(session) as client:
+        lock = file_lock(game.path / GAME_LOCK, cancel=cancel)
+        with lock, session_scope(session) as client:
             profile = self.profile(client)
             version_id: str = profile["id"]
             if game.has_version(version_id):

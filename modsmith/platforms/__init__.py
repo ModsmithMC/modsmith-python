@@ -1,6 +1,8 @@
 """Search and fetch from mod platforms. Subclass `Platform` to add another."""
 
 from ._base import (
+    Dependency,
+    DependencyKind,
     Platform,
     Project,
     ProjectType,
@@ -11,9 +13,14 @@ from ._base import (
 )
 from ._curseforge import CurseForge
 from ._modrinth import Modrinth
+from ._resolve import Conflict, MissingDependency, Resolution, resolve_dependencies
 
 __all__ = [
+    "Conflict",
     "CurseForge",
+    "Dependency",
+    "DependencyKind",
+    "MissingDependency",
     "Modrinth",
     "Platform",
     "Project",
@@ -21,5 +28,7 @@ __all__ = [
     "Release",
     "ReleaseFile",
     "ReleaseType",
+    "Resolution",
     "SearchResults",
+    "resolve_dependencies",
 ]

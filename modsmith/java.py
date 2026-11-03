@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from ._locks import file_lock
 from ._support import default_cache_dir
 from .errors import JavaError
 from .minecraft import GameDir, Version
@@ -274,10 +275,12 @@ def download(
         JavaError: Mojang has no such runtime for this platform, or it is corrupt.
         NetworkError: The runtime index could not be fetched.
         DownloadError: A file could not be downloaded.
+        LockedError: Another process kept this runtime for too long.
         Cancelled: ``cancel`` was triggered.
     """
     cache = _runtime_cache(cache_dir)
-    with session_scope(session) as client:
+    lock = file_lock(cache / f"{component}.lock", cancel=cancel)
+    with lock, session_scope(session) as client:
         index = client.get_json(index_url)
         builds: dict[str, Any] = index.get(platform_key(), {})
         entries: list[dict[str, Any]] = builds.get(component) or []

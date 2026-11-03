@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 
+from .._locks import GAME_LOCK, file_lock
 from ..errors import UnsupportedError
 from ..net import Resource, Session, download
 from ..net._session import session_scope
@@ -81,9 +82,11 @@ def install_version(
         UnsupportedError: The version is unknown or has no client download.
         NetworkError: The manifest could not be fetched.
         DownloadError: A file could not be downloaded.
+        LockedError: Another install kept the game directory for too long.
         Cancelled: ``cancel`` was triggered.
     """
-    with session_scope(session) as client:
+    lock = file_lock(game.path / GAME_LOCK, cancel=cancel)
+    with lock, session_scope(session) as client:
         if not game.has_version(version_id):
             info = next(
                 (

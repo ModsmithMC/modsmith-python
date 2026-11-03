@@ -1,26 +1,32 @@
 """The Modrinth platform."""
 
 import json
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
+from pathlib import Path
 from typing import Any, ClassVar, Literal
 
 from pydantic import BaseModel, Field
 
-from ..net import Session
+from ..net import Session, file_hash
 from ..net._session import DEFAULT_USER_AGENT
+from ..progress import CancelToken, ProgressCallback
 from ._base import (
+    Dependency,
     Platform,
     Project,
     ProjectType,
     Release,
     ReleaseFile,
     SearchResults,
+    digest_files,
     project_ref,
 )
 
 API_URL = "https://api.modrinth.com/v2"
 SITE_URL = "https://modrinth.com"
 PAGE_SIZE = 100
+# The most hashes to send in one request.
+BATCH_SIZE = 500
 
 
 class _Hit(BaseModel):
@@ -65,6 +71,14 @@ class _File(BaseModel):
     primary: bool = False
 
 
+class _Dependency(BaseModel):
+    """A version's dependency from the Modrinth API."""
+
+    version_id: str | None = None
+    project_id: str | None = None
+    dependency_type: Literal["required", "optional", "incompatible", "embedded"]
+
+
 class _Version(BaseModel):
     """A version from the Modrinth API."""
 
@@ -76,6 +90,7 @@ class _Version(BaseModel):
     game_versions: list[str] = Field(default_factory=list[str])
     loaders: list[str] = Field(default_factory=list[str])
     files: list[_File] = Field(default_factory=list[_File])
+    dependencies: list[_Dependency] = Field(default_factory=list[_Dependency])
 
 
 def _project_url(project_type: str, slug: str) -> str:
@@ -258,4 +273,63 @@ class Modrinth(Platform):
                 )
                 for file in version.files
             ),
+            # An entry with neither id names only a file, which cannot be looked up.
+            dependencies=tuple(
+                Dependency(item.dependency_type, item.project_id, item.version_id)
+                for item in version.dependencies
+                if item.project_id or item.version_id
+            ),
         )
+
+    def get_release(self, release_id: str) -> Release:
+        """Look up a release by id.
+
+        Args:
+            release_id: The version's id.
+
+        Returns:
+            The release.
+
+        Raises:
+            NetworkError: Modrinth could not be reached or does not know the id.
+        """
+        data = self._get(f"/version/{release_id}")
+        return self._to_release(_Version.model_validate(data))
+
+    def identify(
+        self,
+        paths: Iterable[Path | str],
+        *,
+        progress: ProgressCallback | None = None,
+        cancel: CancelToken | None = None,
+    ) -> dict[Path, Release]:
+        """Find the releases that files came from, by their SHA-1 hashes.
+
+        Args:
+            paths: The files.
+            progress: Receives an update as each file is read.
+            cancel: Stops reading files.
+
+        Returns:
+            The release of each file Modrinth knows. Other files are left out.
+
+        Raises:
+            OSError: A file could not be read.
+            NetworkError: Modrinth could not be reached.
+            Cancelled: ``cancel`` was triggered.
+        """
+        groups = digest_files(paths, file_hash, progress, cancel)
+        hashes = sorted(groups)
+        releases: dict[Path, Release] = {}
+        for start in range(0, len(hashes), BATCH_SIZE):
+            found = self.session.post_json(
+                f"{self.base_url}/version_files",
+                json={
+                    "hashes": hashes[start : start + BATCH_SIZE],
+                    "algorithm": "sha1",
+                },
+            )
+            for digest, item in found.items():
+                release = self._to_release(_Version.model_validate(item))
+                releases.update(dict.fromkeys(groups[digest], release))
+        return releases

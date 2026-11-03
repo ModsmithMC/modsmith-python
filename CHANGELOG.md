@@ -6,6 +6,22 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- `Release.dependencies`, `Platform.get_release` and
+  `modsmith.platforms.resolve_dependencies` for working out which mods a mod
+  needs.
+- `Platform.identify` finds the releases that files came from, by their
+  contents.
+- `LockedError`. Installs now use file locks, so several processes can work
+  safely: a second sync of one instance fails at once, and installs that share a
+  game directory or cache wait for each other.
+
+### Fixed
+
+- Resolving a CurseForge modpack no longer fails when CurseForge knows none of
+  its files. They stay unresolved, as unknown files already did.
+
 ## [0.1.1] - 2026-11-03
 
 ### Fixed

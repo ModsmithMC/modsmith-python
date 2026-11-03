@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from .. import java as java_runtime
+from .._locks import GAME_LOCK, file_lock
 from .._support import default_cache_dir
 from ..errors import JavaError, LoaderError, NetworkError, ProcessorError
 from ..minecraft import GameDir, install_version
@@ -56,18 +57,21 @@ class ProcessorLoader(Loader):
         Raises:
             DownloadError: The installer could not be downloaded.
             LoaderError: The installer is malformed.
+            LockedError: Another process kept the download for too long.
             UnsupportedError: The installer is older than Minecraft 1.13.
         """
         url = self.installer_url()
         dest = (cache_dir or default_cache_dir()) / "installers" / url.rsplit("/", 1)[1]
         if not dest.is_file():
-            with session_scope(session) as client:
-                try:
-                    body = client.request("GET", f"{url}.sha1").text
-                    hashes = {"sha1": body.split()[0]}
-                except (NetworkError, IndexError):
-                    hashes = None
-                download(Resource.of(url, dest, hashes), session=client)
+            lock = file_lock(dest.with_name(f"{dest.name}.lock"))
+            with lock, session_scope(session) as client:
+                if not dest.is_file():
+                    try:
+                        body = client.request("GET", f"{url}.sha1").text
+                        hashes = {"sha1": body.split()[0]}
+                    except (NetworkError, IndexError):
+                        hashes = None
+                    download(Resource.of(url, dest, hashes), session=client)
         return InstallerJar(dest)
 
     def version_id(
@@ -133,6 +137,7 @@ class ProcessorLoader(Loader):
             UnsupportedError: The version is not supported.
             NetworkError: Mojang's version manifest could not be fetched.
             DownloadError: A file could not be downloaded.
+            LockedError: Another install kept the game directory for too long.
             Cancelled: ``cancel`` was triggered.
         """
         expected = self.expected_id()
@@ -140,7 +145,8 @@ class ProcessorLoader(Loader):
             return expected
         if cache_dir is not None:
             cache_dir = Path(cache_dir).resolve()  # processors run in another directory
-        with session_scope(session) as client:
+        lock = file_lock(game.path / GAME_LOCK, cancel=cancel)
+        with lock, session_scope(session) as client:
             installer = self.fetch_installer(session=client, cache_dir=cache_dir)
             if game.has_version(installer.version_id):
                 return installer.version_id

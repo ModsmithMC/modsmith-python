@@ -8,6 +8,7 @@ from tests.lib.docs import prepare, run_page
 
 PAGES = [
     "get-started/quickstart.md",
+    "guides/dependencies.md",
     "guides/loaders.md",
     "guides/java.md",
     "guides/errors.md",

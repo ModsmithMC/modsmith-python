@@ -38,7 +38,7 @@ Yes. The game directory holds versions and libraries, which packs share. Each pa
 
 ## Is it safe to call from several threads?
 
-A `Session` can be shared between threads. Avoid running two installs that write to the same folder at once, including the same cache directory, because they can collide on the same file.
+Yes, and from several processes. A `Session` can be shared between threads, and locks keep installs out of each other's files. A second sync of one instance raises `LockedError` at once, because it is usually a mistake. Installs that share a game directory or cache wait their turn, for up to ten minutes.
 
 ## Does it work with servers?
 

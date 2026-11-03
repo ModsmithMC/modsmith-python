@@ -14,6 +14,7 @@ __all__ = [
     "JavaError",
     "LauncherError",
     "LoaderError",
+    "LockedError",
     "ModsmithError",
     "NetworkError",
     "PackError",
@@ -30,6 +31,10 @@ class ModsmithError(Exception):
 
 class Cancelled(ModsmithError):
     """A `CancelToken` stopped the operation. It can be run again later."""
+
+
+class LockedError(ModsmithError):
+    """Another process or thread is using the same files. Try again later."""
 
 
 class NetworkError(ModsmithError):
