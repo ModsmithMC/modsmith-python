@@ -3,8 +3,8 @@
 ```{raw} html
 <div class="hero">
   <picture>
-    <source media="(max-width: 560px)" srcset="_static/hero-small.svg">
-    <img src="_static/hero.svg" alt="">
+    <source media="(max-width: 560px)" srcset="_static/hero-library-small.svg">
+    <img src="_static/hero-library.svg" alt="">
   </picture>
   <div class="hero-copy">
     <h2>Build your own modpack tools</h2>
@@ -132,9 +132,10 @@ launcher.add_profile(pack.name, version_id, instance.path)
 <div class="band center closing">
   <div class="band-inner">
     <h2>Start building</h2>
-    <p class="lede">Modsmith needs Python 3.12 or newer. Just want to play? <a href="https://modsmithmc.org/">Modsmith installs modpacks for you</a>.</p>
-    <div class="actions">
+    <p class="lede">Modsmith needs Python 3.12 or newer.</p>
+    <div class="actions centered">
       <a class="button primary" href="get-started/installation/">Get started</a>
+      <a class="button" href="https://modsmithmc.org/modsmith/">Just want to play? Use the command line</a>
     </div>
   </div>
 </div>
