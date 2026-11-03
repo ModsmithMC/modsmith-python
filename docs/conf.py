@@ -30,10 +30,19 @@ exclude_patterns = ["_build", "_templates", "assets"]
 
 html_theme = "modsmith"
 html_title = project
-html_baseurl = "https://modsmithmc.org/modsmith-python/"
+SITE = "https://modsmithmc.org/"
+html_baseurl = SITE + "modsmith-python/"
 html_theme_options = {
     "base_url": html_baseurl,
+    "home_url": SITE,
     "repository": "ModsmithMC/modsmith-python",
+    "site_name": "Python library",
+    "site_title": "Modsmith Python library",
+    "sites": [
+        ["Home", SITE, "What Modsmith is, and how to get it"],
+        ["Command line", SITE + "modsmith/", "Install modpacks, and every command"],
+        ["Python library", html_baseurl, "Build your own tools"],
+    ],
 }
 html_favicon = "assets/logo.svg"
 html_static_path = ["assets"]
