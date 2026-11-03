@@ -4,10 +4,12 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from .instances import Plan
     from .packs import PackEntry
 
 __all__ = [
     "Cancelled",
+    "DependencyError",
     "DownloadError",
     "InstanceError",
     "IntegrityError",
@@ -118,3 +120,24 @@ class UnresolvedEntriesError(InstanceError):
     def __init__(self, entries: "Sequence[PackEntry]") -> None:
         super().__init__(f"{len(entries)} pack entries have no download")
         self.entries = list(entries)
+
+
+class DependencyError(InstanceError):
+    """A plan has conflicts or missing required dependencies.
+
+    Nothing was installed. Show the plan's ``resolution`` to the player.
+
+    Args:
+        plan: The plan.
+
+    Attributes:
+        plan: The plan.
+    """
+
+    def __init__(self, plan: "Plan") -> None:
+        resolution = plan.resolution
+        super().__init__(
+            f"{len(resolution.conflicts)} conflicts and "
+            f"{len(resolution.missing)} missing dependencies"
+        )
+        self.plan = plan

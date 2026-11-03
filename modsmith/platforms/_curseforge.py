@@ -52,6 +52,7 @@ PROJECT_CLASSES: dict[str, int] = {
     "resourcepack": 12,
     "shader": 6552,
 }
+CLASS_TYPES = {class_id: kind for kind, class_id in PROJECT_CLASSES.items()}
 CLASS_FOLDERS = {
     6: "mods",
     12: "resourcepacks",
@@ -156,7 +157,7 @@ class _Mod(_Schema):
     download_count: int = 0
 
     def to_project(self, platform: str, project_type: str) -> Project:
-        """Convert this mod to a `Project`."""
+        """Convert this mod to a `Project`, preferring the type CurseForge reports."""
         logo = self.logo
         return Project(
             platform=platform,
@@ -164,7 +165,7 @@ class _Mod(_Schema):
             slug=self.slug,
             name=self.name,
             summary=self.summary,
-            project_type=project_type,
+            project_type=CLASS_TYPES.get(self.class_id or 0, project_type),
             icon_url=(logo.thumbnail_url or logo.url) if logo else None,
             url=self.links.website_url if self.links else None,
             downloads=self.download_count,
@@ -277,7 +278,7 @@ class CurseForge(Platform):
             project_type: The kind of project. Slugs are only unique within a type.
 
         Returns:
-            The project.
+            The project. Its type is the one CurseForge reports, when known.
 
         Raises:
             PlatformError: No project has that slug.

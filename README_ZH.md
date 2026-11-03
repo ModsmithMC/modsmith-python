@@ -230,7 +230,8 @@ flowchart LR
 | `modsmith.platforms` | `Modrinth`、`CurseForge` 和 `Platform` 基类 |
 | `modsmith.packs` | `load()`、`Modpack`，以及 mrpack 和 CurseForge 格式 |
 | `modsmith.loaders` | `Forge`、`NeoForge`、`Fabric`、`Quilt` 和 `Loader` 基类 |
-| `modsmith.instances` | `Instance`，提供 `diff()` 和 `sync()` |
+| `modsmith.instances` | `Instance`，用 `sync()` 安装整合包，用 `plan()`、`add()` 和 `remove()` 管理单个模组和资源 |
+| `modsmith.metadata` | `read()`，读取模组和资源包声明的信息 |
 | `modsmith.minecraft` | `GameDir`、`Version` 和原版版本下载 |
 | `modsmith.java` | 查找运行时和下载 Mojang 运行时 |
 | `modsmith.launcher` | 官方启动器配置 |

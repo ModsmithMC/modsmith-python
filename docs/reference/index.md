@@ -20,6 +20,10 @@ Every public module, generated from the source code.
 
   Install and update game files.
 
+- ![](../assets/pixel/info.svg) [Metadata](metadata.md)
+
+  What mods and packs declare about themselves.
+
 - ![](../assets/pixel/block.svg) [Minecraft](minecraft.md)
 
   Game directories, versions and Maven coordinates.
@@ -53,6 +57,7 @@ platforms
 packs
 loaders
 instances
+metadata
 minecraft
 java
 launcher

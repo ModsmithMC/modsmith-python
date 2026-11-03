@@ -185,3 +185,16 @@ def test_entry_is_resolved_only_with_path_and_url():
     assert not PackEntry().is_resolved
     assert not PackEntry(path="a").is_resolved
     assert PackEntry(path="a", urls=("u",)).is_resolved
+
+
+def test_mrpack_entries_hosted_on_modrinth_name_their_project(tmp_path):
+    cdn = "https://cdn.modrinth.com/data/AANobbMI/versions/u1OEbNKx/sodium.jar"
+    pack = load(
+        write_mrpack(
+            tmp_path / "p.mrpack",
+            [mrpack_file("sodium.jar", b"s", cdn), mrpack_file("b.jar", b"b", URL)],
+        )
+    )
+    first, second = pack.entries
+    assert first.ref == FileRef("modrinth", "AANobbMI", "u1OEbNKx")
+    assert second.ref is None

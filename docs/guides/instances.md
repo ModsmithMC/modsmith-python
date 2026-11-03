@@ -13,6 +13,8 @@ changes = instance.sync(pack)
 
 The folder is created by the first sync. Modsmith records what it installed in a `.modsmith` folder inside it.
 
+To add single mods, resource packs or shaders next to the pack, or to start an instance without one, see [Add mods and packs](additions.md). A sync keeps those additions.
+
 ## Preview changes
 
 `diff` shows what a sync would do, and changes nothing:
@@ -47,9 +49,10 @@ Show `changes.conflicts` to the player and let them choose, rather than passing 
 state = instance.state
 if state is not None:
     print(state.pack_name, state.pack_version, state.synced_at)
+    print(state.minecraft, state.loader_kind)
 ```
 
-`state` is `None` if nothing has been synced to the folder.
+`state` is `None` if the folder is not an instance yet. `pack_name` and `pack_version` are `None` for an instance made with `Instance.create`.
 
 ## Choose what to install
 

@@ -24,6 +24,10 @@ Each guide covers one task. They can be read in any order.
 
   Keep a pack up to date and preserve player changes.
 
+- ![](../assets/pixel/download.svg) [Add mods and packs](additions.md)
+
+  Install, update and remove single mods, resource packs and shaders.
+
 - ![](../assets/pixel/key.svg) [Install CurseForge packs](curseforge.md)
 
   Look up files and handle manual downloads.
@@ -58,6 +62,7 @@ dependencies
 modpacks
 loaders
 instances
+additions
 curseforge
 launcher
 java

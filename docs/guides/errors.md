@@ -34,8 +34,9 @@ Errors from your own mistakes, such as passing the wrong type, are ordinary Pyth
 | `LauncherError` | The launcher's files could not be used |
 | `InstanceError` | An instance could not be read or changed |
 | `UnresolvedEntriesError` | A pack still has files with no download |
+| `DependencyError` | A plan to add projects has conflicts or missing dependencies |
 
-`ProcessorError` is a kind of `LoaderError`, and `UnresolvedEntriesError` is a kind of `InstanceError`.
+`ProcessorError` is a kind of `LoaderError`. `UnresolvedEntriesError` and `DependencyError` are kinds of `InstanceError`.
 
 ## Report failed downloads
 

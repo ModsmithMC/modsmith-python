@@ -102,6 +102,12 @@ _registry: dict[str, type[Loader]] = {}
 _aliases = {"fabric-loader": "fabric", "quilt-loader": "quilt"}
 
 
+def loader_name(kind: str) -> str:
+    """Return the name platforms use for a loader, such as ``fabric`` for ``fabric-loader``."""
+    name = kind.lower()
+    return _aliases.get(name, name)
+
+
 def register(cls: type[Loader]) -> type[Loader]:
     """Make a `Loader` subclass available to `create` and `parse`.
 
@@ -131,8 +137,7 @@ def create(kind: str, version: str, minecraft: str) -> Loader:
     Raises:
         UnsupportedError: No loader is registered under that name.
     """
-    name = kind.lower()
-    cls = _registry.get(_aliases.get(name, name))
+    cls = _registry.get(loader_name(kind))
     if cls is None:
         raise UnsupportedError(f"Unsupported mod loader: {kind}")
     return cls(version.removeprefix(f"{minecraft}-"), minecraft)

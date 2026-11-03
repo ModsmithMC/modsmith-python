@@ -1,6 +1,7 @@
 """Modpack archive formats, and detecting which one an archive uses."""
 
 import json
+import re
 import zipfile
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -10,6 +11,12 @@ from pydantic import BaseModel, Field, ValidationError
 
 from ..errors import PackError, UnsupportedError
 from ._model import FileRef, Modpack, PackEntry, Support, safe_relative
+
+# Modrinth's CDN puts the project and version ids in every file's address.
+MODRINTH_CDN = re.compile(
+    r"^https://cdn\.modrinth\.com/data/(?P<project>[A-Za-z0-9]+)"
+    r"/versions/(?P<version>[A-Za-z0-9]+)/"
+)
 
 
 class PackFormat(ABC):
@@ -98,6 +105,15 @@ class _MrpackFile(BaseModel):
     env: _MrpackEnv = Field(default_factory=_MrpackEnv)
 
 
+def _modrinth_ref(urls: list[str]) -> FileRef | None:
+    """Find the Modrinth project and version in a file's download addresses."""
+    for url in urls:
+        match = MODRINTH_CDN.match(url)
+        if match:
+            return FileRef("modrinth", match["project"], match["version"])
+    return None
+
+
 class _MrpackIndex(BaseModel):
     """The contents of ``modrinth.index.json``."""
 
@@ -132,7 +148,8 @@ class Mrpack(PackFormat):
             path: The archive.
 
         Returns:
-            The modpack. Its entries are already resolved.
+            The modpack. Its entries are already resolved, and those hosted on
+            Modrinth's CDN also carry a `FileRef`.
 
         Raises:
             PackError: The index is invalid or does not name a game version or loader.
@@ -166,6 +183,7 @@ class Mrpack(PackFormat):
                     size=file.file_size,
                     client=file.env.client,
                     server=file.env.server,
+                    ref=_modrinth_ref(file.downloads),
                 )
                 for file in data.files
             ),

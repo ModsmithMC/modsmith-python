@@ -230,7 +230,8 @@ flowchart LR
 | `modsmith.platforms` | `Modrinth`, `CurseForge` and the `Platform` base class |
 | `modsmith.packs` | `load()`, `Modpack`, and the mrpack and CurseForge formats |
 | `modsmith.loaders` | `Forge`, `NeoForge`, `Fabric`, `Quilt` and the `Loader` base class |
-| `modsmith.instances` | `Instance`, with `diff()` and `sync()` |
+| `modsmith.instances` | `Instance`, with `sync()` for packs and `plan()`, `add()` and `remove()` for single mods and packs |
+| `modsmith.metadata` | `read()` for what mods and packs declare about themselves |
 | `modsmith.minecraft` | `GameDir`, `Version` and vanilla version downloads |
 | `modsmith.java` | Runtime lookup and Mojang runtime downloads |
 | `modsmith.launcher` | Official launcher profiles |

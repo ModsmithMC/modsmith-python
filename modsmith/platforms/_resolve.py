@@ -3,9 +3,10 @@
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-from ..errors import NetworkError, PlatformError
+from ..errors import NetworkError, PlatformError, UnsupportedError
+from ..packs import FileRef
 from ..progress import CancelToken
-from ._base import Dependency, Platform, Release
+from ._base import Dependency, Platform, Project, Release
 
 # Quilt loads Fabric mods, so a Fabric release can fill a Quilt dependency.
 LOADER_FALLBACKS = {"quilt": ("quilt", "fabric")}
@@ -63,6 +64,38 @@ def _is_missing(error: NetworkError) -> bool:
     return error.status == NOT_FOUND
 
 
+def newest_release(
+    platform: Platform,
+    project: Project,
+    *,
+    game_version: str | None,
+    loader: str | None,
+    release_only: bool,
+) -> Release | None:
+    """Return a project's newest release for a game version and loader, if any.
+
+    For the Quilt loader, a Fabric release is used when there is no Quilt one.
+    A ``loader`` of None accepts any loader.
+    """
+    loaders = LOADER_FALLBACKS.get(loader, (loader,)) if loader else (None,)
+    for item in loaders:
+        releases = platform.iter_releases(
+            project,
+            game_version=game_version,
+            loader=item,
+            release_only=release_only,
+        )
+        release = next(releases, None)
+        if release is not None:
+            return release
+    return None
+
+
+def _id(item: Release | FileRef) -> str:
+    """Return the release id of a release or a file reference."""
+    return item.id if isinstance(item, Release) else item.file_id
+
+
 class _Resolver:
     """The state of one `resolve_dependencies` call."""
 
@@ -73,12 +106,12 @@ class _Resolver:
         loader: str,
         include_optional: bool,
         release_only: bool,
-        installed: dict[str, Release],
+        installed: dict[str, Release | FileRef],
         cancel: CancelToken | None,
     ) -> None:
         self.platform = platform
         self.game_version = game_version
-        self.loaders = LOADER_FALLBACKS.get(loader, (loader,))
+        self.loader = loader
         self.include_optional = include_optional
         self.release_only = release_only
         self.installed = installed
@@ -92,17 +125,32 @@ class _Resolver:
     def _newest(self, project_id: str) -> Release | None:
         """Return a project's newest compatible release, if it has one."""
         project = self.platform.get_project(project_id, project_type="mod")
-        for loader in self.loaders:
-            releases = self.platform.iter_releases(
-                project,
-                game_version=self.game_version,
-                loader=loader,
-                release_only=self.release_only,
+        return newest_release(
+            self.platform,
+            project,
+            game_version=self.game_version,
+            loader=self.loader,
+            release_only=self.release_only,
+        )
+
+    def _release(self, item: Release | FileRef) -> Release:
+        """Return the release behind an installed file, to report it."""
+        if isinstance(item, Release):
+            return item
+        release: Release | None = None
+        try:
+            release = self.platform.get_release(item.file_id)
+        except (PlatformError, UnsupportedError):
+            pass
+        except NetworkError as e:
+            if not _is_missing(e):
+                raise
+        if release is None:
+            release = Release(
+                item.platform, item.file_id, item.project_id, item.file_id
             )
-            release = next(releases, None)
-            if release is not None:
-                return release
-        return None
+        self.installed[item.project_id] = release
+        return release
 
     def _find(self, dependency: Dependency) -> Release | None:
         """Fetch the release a dependency asks for, if it exists."""
@@ -117,7 +165,7 @@ class _Resolver:
                 return None
             raise
 
-    def _current(self, project_id: str | None) -> Release | None:
+    def _current(self, project_id: str | None) -> Release | FileRef | None:
         """Return the release already settled for a project."""
         if project_id is None:
             return None
@@ -136,9 +184,13 @@ class _Resolver:
                 self.chosen[found.project_id] = found
                 current = found
         wanted = dependency.release_id
-        if wanted is not None and current.id != wanted:
-            self.conflicts.append(Conflict(release, dependency, current))
-        elif self.chosen.get(current.project_id) is current:
+        if wanted is not None and _id(current) != wanted:
+            chosen = self._release(current)
+            self.conflicts.append(Conflict(release, dependency, chosen))
+        elif (
+            isinstance(current, Release)
+            and self.chosen.get(current.project_id) is current
+        ):
             self.visit(current)
 
     def visit(self, release: Release) -> None:
@@ -156,12 +208,12 @@ class _Resolver:
                 self._follow(release, dependency)
         self.order.append(release)
 
-    def _refused(self, dependency: Dependency) -> Release | None:
+    def _refused(self, dependency: Dependency) -> Release | FileRef | None:
         """Return the settled release that an ``incompatible`` entry names."""
         settled = {**self.installed, **self.chosen}.values()
         for candidate in settled:
             if dependency.release_id is not None:
-                if candidate.id == dependency.release_id:
+                if _id(candidate) == dependency.release_id:
                     return candidate
             elif candidate.project_id == dependency.project_id:
                 return candidate
@@ -169,12 +221,16 @@ class _Resolver:
 
     def check_incompatible(self) -> None:
         """Record every pair of settled releases that refuse each other."""
-        for release in {**self.installed, **self.chosen}.values():
+        for release in list({**self.installed, **self.chosen}.values()):
+            # A file reference has no dependencies to check.
+            if not isinstance(release, Release):
+                continue
             for dependency in release.dependencies:
                 if dependency.kind == "incompatible":
                     other = self._refused(dependency)
                     if other is not None:
-                        self.conflicts.append(Conflict(release, dependency, other))
+                        chosen = self._release(other)
+                        self.conflicts.append(Conflict(release, dependency, chosen))
 
 
 def resolve_dependencies(
@@ -185,7 +241,7 @@ def resolve_dependencies(
     loader: str,
     include_optional: bool = False,
     release_only: bool = True,
-    installed: Iterable[Release] = (),
+    installed: Iterable[Release | FileRef] = (),
     cancel: CancelToken | None = None,
 ) -> Resolution:
     """Work out which releases to install so that dependencies are met.
@@ -206,8 +262,10 @@ def resolve_dependencies(
         loader: The mod loader.
         include_optional: Also install optional dependencies.
         release_only: Leave out alpha and beta releases when choosing a version.
-        installed: Releases that are already in place, such as the results of
-            `Platform.identify`. They meet dependencies without being installed.
+        installed: What is already in place, such as the results of
+            `Platform.identify` or the `FileRef` of a pack's entries. These meet
+            dependencies without being installed. References to other
+            platforms are ignored.
         cancel: Stops the search.
 
     Returns:
@@ -225,7 +283,11 @@ def resolve_dependencies(
         loader,
         include_optional,
         release_only,
-        {release.project_id: release for release in installed},
+        {
+            item.project_id: item
+            for item in installed
+            if isinstance(item, Release) or item.platform == platform.name
+        },
         cancel,
     )
     roots = list(releases)
@@ -234,7 +296,7 @@ def resolve_dependencies(
     for release in resolver.chosen.copy().values():
         resolver.visit(release)
     resolver.check_incompatible()
-    present = {release.id for release in resolver.installed.values()}
+    present = {_id(item) for item in resolver.installed.values()}
     return Resolution(
         tuple(item for item in resolver.order if item.id not in present),
         tuple(resolver.conflicts),

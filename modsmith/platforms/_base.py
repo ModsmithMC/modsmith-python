@@ -15,6 +15,12 @@ from ..progress import CancelToken, ProgressCallback, report
 DependencyKind = Literal["required", "optional", "incompatible", "embedded"]
 ProjectType = Literal["mod", "modpack", "resourcepack", "shader"]
 ReleaseType = Literal["release", "beta", "alpha"]
+# Where the game looks for each kind of project, relative to the game directory.
+PROJECT_FOLDERS = {
+    "mod": "mods",
+    "resourcepack": "resourcepacks",
+    "shader": "shaderpacks",
+}
 
 
 @dataclass(frozen=True)
@@ -42,6 +48,15 @@ class Project:
     icon_url: str | None = None
     url: str | None = None
     downloads: int = 0
+
+    @property
+    def folder(self) -> str | None:
+        """The folder the game loads this kind of project from, such as ``mods``.
+
+        None for modpacks and for kinds that do not go in a game directory's
+        top level, such as datapacks, which belong to a single world.
+        """
+        return PROJECT_FOLDERS.get(self.project_type)
 
 
 @dataclass(frozen=True)

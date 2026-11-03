@@ -4,7 +4,9 @@ import pytest
 
 import modsmith as ms
 from modsmith.errors import Cancelled, UnsupportedError
-from modsmith.platforms import resolve_dependencies
+from modsmith.packs import FileRef
+from modsmith.platforms import Project, resolve_dependencies
+from modsmith.platforms._resolve import newest_release
 from tests.lib.catalog import Catalog, on, release
 
 
@@ -194,7 +196,10 @@ def test_default_platform_cannot_look_up_releases():
 
 
 def test_default_identify_knows_nothing(tmp_path):
-    assert Catalog().identify([tmp_path / "unread.jar"]) == {}
+    class NoIdentify(Catalog):
+        identify = ms.platforms.Platform.identify
+
+    assert NoIdentify().identify([tmp_path / "unread.jar"]) == {}
 
 
 def test_resolving_is_safe_from_several_threads():
@@ -210,3 +215,65 @@ def test_resolving_is_safe_from_several_threads():
     for thread in threads:
         thread.join()
     assert results == [["b-1", "a-1"]] * 8
+
+
+def test_file_reference_meets_a_dependency():
+    a = release("a", "1", on("b"))
+    catalog = Catalog(a, release("b", "2"), release("b", "1"))
+    installed = [FileRef("catalog", "b", "b-1")]
+    assert ids(resolve(catalog, a, installed=installed)) == ["a-1"]
+
+
+def test_file_reference_with_the_wrong_version_reports_its_release():
+    a = release("a", "1", on("b", exact="b-2"))
+    old = release("b", "1")
+    installed = [FileRef("catalog", "b", "b-1")]
+    result = resolve(Catalog(a, release("b", "2"), old), a, installed=installed)
+    assert ids(result) == ["a-1"]
+    assert result.conflicts[0].chosen == old
+
+
+def test_unknown_file_reference_is_still_reported():
+    a = release("a", "1", on("b", exact="b-2"))
+    installed = [FileRef("catalog", "b", "gone")]
+    result = resolve(Catalog(a, release("b", "2")), a, installed=installed)
+    assert result.conflicts[0].chosen.id == "gone"
+
+
+def test_incompatible_with_an_installed_file_reference():
+    a = release("a", "1", on("b", kind="incompatible"))
+    installed = [FileRef("catalog", "b", "b-1")]
+    result = resolve(Catalog(a, release("b")), a, installed=installed)
+    assert [item.chosen.id for item in result.conflicts] == ["b-1"]
+
+
+def test_file_references_from_other_platforms_are_ignored():
+    a = release("a", "1", on("b"))
+    installed = [FileRef("elsewhere", "b", "b-1")]
+    assert ids(resolve(Catalog(a, release("b")), a, installed=installed)) == [
+        "b-1",
+        "a-1",
+    ]
+
+
+def test_newest_release_with_any_loader():
+    catalog = Catalog(release("p", "2", loader="iris"), release("p", "1"))
+    project = Project("catalog", "p", "p", "P")
+    options = {"game_version": "1.21.1", "release_only": True}
+    assert newest_release(catalog, project, loader=None, **options).id == "p-2"
+    assert newest_release(catalog, project, loader="fabric", **options).id == "p-1"
+    assert newest_release(catalog, project, loader="forge", **options) is None
+
+
+@pytest.mark.parametrize(
+    ("kind", "folder"),
+    [
+        ("mod", "mods"),
+        ("resourcepack", "resourcepacks"),
+        ("shader", "shaderpacks"),
+        ("modpack", None),
+        ("datapack", None),
+    ],
+)
+def test_project_folders(kind, folder):
+    assert Project("x", "1", "a", "A", project_type=kind).folder == folder

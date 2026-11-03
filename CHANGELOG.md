@@ -6,6 +6,32 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- `Instance.plan` and `Instance.add` install single mods, resource packs and
+  shader packs, with their dependencies, next to a pack or without one.
+  `Instance.plan_updates`, `Instance.remove` and `Instance.pin` update and
+  remove them, and `remove` also takes dependencies nothing else needs.
+- `Instance.create` starts an instance that does not come from a pack.
+- `Instance.disable` and `Instance.enable` switch files off and on with the
+  `.disabled` suffix. Syncs and updates keep disabled files disabled.
+- `Instance.contents` lists mods, resource packs and shader packs, with where
+  each came from, and `Instance.adopt` takes over files the player added.
+- `modsmith.metadata` reads what mod jars and packs declare about themselves.
+- `Project.folder` names the folder each kind of project goes in.
+- `.mrpack` entries hosted on Modrinth carry a `FileRef`, and
+  `resolve_dependencies` accepts one as installed.
+
+### Changed
+
+- `modsmith.instances` is now a package, and `InstanceState` has new fields.
+  The Minecraft version comes first, `pack_name`, `pack_version`,
+  `loader_kind` and `loader_version` can be None, and `loader_kind` uses the
+  name platforms use, such as `fabric` rather than `fabric-loader`. State files
+  from 0.2 still load.
+- CurseForge projects report the type CurseForge gives them, rather than the
+  type that was asked for.
+
 ## [0.2.0] - 2026-11-03
 
 ### Added

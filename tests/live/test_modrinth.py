@@ -166,3 +166,68 @@ def test_identify_finds_a_downloaded_file(modrinth, tmp_path):
 
 def test_identify_with_nothing_makes_no_request(modrinth):
     assert modrinth.identify([]) == {}
+
+
+def fabric_instance(tmp_path):
+    return ms.instances.Instance.create(
+        tmp_path / "game", minecraft=MINECRAFT, loader="fabric"
+    )
+
+
+def test_add_and_remove_a_mod_with_its_dependencies(modrinth, tmp_path):
+    instance = fabric_instance(tmp_path)
+    release = with_required_dependency(modrinth, DEPENDENT_PROJECT)
+
+    plan = instance.plan(modrinth, [release], release_only=False)
+    assert plan.ok
+    assert len(plan.additions) > 1
+    instance.add(plan)
+
+    for item in instance.additions:
+        assert (instance.path / item.path).is_file()
+        assert item.path.startswith("mods/")
+        assert item.name
+    assert [item.release_id for item in instance.additions if item.requested] == [
+        release.id
+    ]
+    instance.remove(DEPENDENT_PROJECT)
+    assert instance.additions == ()
+    assert not any((instance.path / "mods").iterdir())
+
+
+@pytest.mark.parametrize(
+    ("kind", "folder"),
+    [("resourcepack", "resourcepacks"), ("shader", "shaderpacks")],
+)
+def test_packs_are_planned_into_their_folders(modrinth, tmp_path, kind, folder):
+    project = modrinth.search(
+        "", project_type=kind, game_version=MINECRAFT, limit=1
+    ).projects[0]
+    plan = fabric_instance(tmp_path).plan(modrinth, [project], project_type=kind)
+    assert plan.additions[0].path.startswith(f"{folder}/")
+    assert plan.additions[0].project_type == kind
+
+
+def test_adopt_recognises_a_downloaded_mod(modrinth, tmp_path):
+    instance = fabric_instance(tmp_path)
+    project = modrinth.get_project(LARGE_PROJECT)
+    release = next(
+        modrinth.iter_releases(project, game_version=MINECRAFT, loader="fabric")
+    )
+    path = modrinth.fetch(release, instance.path / "mods")
+
+    adopted = instance.adopt(modrinth)
+
+    assert [item.release_id for item in adopted] == [release.id]
+    assert adopted[0].path == f"mods/{path.name}"
+    assert adopted[0].slug == LARGE_PROJECT
+
+
+def test_mrpack_entries_name_their_modrinth_release(modrinth, tmp_path):
+    project = modrinth.get_project(PROJECT)
+    release = next(modrinth.iter_releases(project, release_only=True))
+    pack = ms.packs.load(modrinth.fetch(release, tmp_path))
+    refs = [entry.ref for entry in pack.entries if entry.ref]
+    assert len(refs) == len(pack.entries)
+    found = modrinth.get_release(refs[0].file_id)
+    assert found.project_id == refs[0].project_id

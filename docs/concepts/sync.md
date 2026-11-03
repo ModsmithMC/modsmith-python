@@ -39,6 +39,12 @@ Modsmith records a hash of every file it installs, in `.modsmith/instance.json`.
 
 A file the pack no longer has is removed if it still matches the record. If the player edited it, it stays, and appears in `orphaned`.
 
+## Additions and disabled files
+
+Projects added with `Instance.add` are recorded next to the pack's files, and use the same three steps. A sync treats them as part of what the folder should hold, so it keeps them, unless the pack now provides the same project.
+
+A file renamed with a `.disabled` suffix counts as the same file, switched off. A sync compares and updates it under that name, so it stays off.
+
 Files Modsmith did not install are never touched.
 
 ## Why a sync with nothing to do is fast

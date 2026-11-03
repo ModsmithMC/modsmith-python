@@ -188,3 +188,27 @@ def test_identify_matches_the_real_fingerprint(curseforge, tmp_path):
 
     assert list(found) == [path]
     assert found[path].id == release.id
+
+
+def test_projects_report_their_real_type(curseforge):
+    project = curseforge.search("", project_type="resourcepack", limit=1).projects[0]
+    assert project.project_type == "resourcepack"
+    found = curseforge.get_project(project.id, project_type="mod")
+    assert found.project_type == "resourcepack"
+
+
+def test_add_a_mod_with_its_dependencies(curseforge, tmp_path):
+    instance = ms.instances.Instance.create(
+        tmp_path / "game", minecraft=MINECRAFT, loader="forge"
+    )
+    release = dependent_release(curseforge)
+
+    plan = instance.plan(curseforge, [release], release_only=False)
+    assert plan.ok
+    assert len(plan.additions) > 1
+    instance.add(plan)
+
+    for item in instance.additions:
+        assert (instance.path / item.path).is_file()
+    instance.remove(release.project_id)
+    assert instance.additions == ()

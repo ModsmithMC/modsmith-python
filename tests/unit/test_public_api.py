@@ -10,6 +10,7 @@ MODULES = [
     "java",
     "launcher",
     "loaders",
+    "metadata",
     "minecraft",
     "net",
     "packs",
@@ -17,7 +18,15 @@ MODULES = [
     "progress",
 ]
 STABLE = {
-    "instances": {"Changes", "Instance", "InstanceState"},
+    "instances": {
+        "Addition",
+        "Changes",
+        "ContentFile",
+        "Instance",
+        "InstanceState",
+        "Plan",
+    },
+    "metadata": {"Metadata", "read"},
     "launcher": {"Launcher", "Profile", "icon_data_uri", "is_running"},
     "net": {"Resource", "Session", "download", "file_hash"},
     "java": {"JavaRuntime", "download", "find", "find_all", "required_for"},

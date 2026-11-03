@@ -75,3 +75,13 @@ def test_third_party_loader_can_register():
 )
 def test_installer_urls(loader, url):
     assert loader.installer_url() == url
+
+
+@pytest.mark.parametrize(
+    ("kind", "expected"),
+    [("fabric-loader", "fabric"), ("Quilt-Loader", "quilt"), ("NeoForge", "neoforge")],
+)
+def test_loader_names(kind, expected):
+    from modsmith.loaders._base import loader_name
+
+    assert loader_name(kind) == expected

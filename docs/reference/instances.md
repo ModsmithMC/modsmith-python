@@ -1,6 +1,6 @@
 # Instances
 
-Game directories managed from a modpack.
+Game directories managed from a modpack and from projects added on their own.
 
 ```{eval-rst}
 .. currentmodule:: modsmith.instances
@@ -16,4 +16,16 @@ Game directories managed from a modpack.
    Instance
    Changes
    InstanceState
+```
+
+## Additions
+
+```{eval-rst}
+.. autosummary::
+   :toctree: instances
+   :nosignatures:
+
+   Plan
+   Addition
+   ContentFile
 ```
