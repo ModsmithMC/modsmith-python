@@ -10,26 +10,28 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - `Platform.latest_release` returns a project's newest release for a game
   version and loader in one call, falling back from Quilt to Fabric.
+- `Platform.search` takes `sort`: `relevance`, `downloads`, `popularity`,
+  `newest` or `updated`, the same on both platforms. `limit` may exceed what a
+  platform serves at once; the extra pages are read for you.
+- `Project` gains `author`, `categories`, `updated`, `follows` and
+  `game_versions`, filled the same way on both platforms.
+- `Platform.get_projects` looks up many projects at once. `Instance.plan`,
+  `Instance.plan_updates` and `Instance.adopt` use it, so they need far fewer
+  requests.
+- `Release.version` holds the version label its author gave, and
+  `Platform.changelog` returns what a release changed as plain text, converted
+  from HTML on CurseForge.
 - `modsmith.loaders.versions` lists a loader's versions for a Minecraft version,
   newest first and marked stable or not, the same way for every loader.
   `modsmith.loaders.recommended` returns the one to install by default.
   Loaders that implement `Loader.available` take part.
 - `Modpack.install_game` installs what a pack runs on, its mod loader or
   plain Minecraft, and returns the version id for a launcher profile.
+
 ### Changed
+
 - `Modpack.loader_kind`, `Modpack.loader_version` and `Modpack.loader` are None
   for a pack that needs no mod loader.
-- `Platform.search` takes `sort`: `relevance`, `downloads`, `popularity`,
-  `newest` or `updated`, the same on both platforms. `limit` may exceed what a
-  platform serves at once; the extra pages are read for you.
-- `Project` gains `author`, `categories`, `updated`, `follows` and
-  `game_versions`, filled the same way on both platforms.
-- `Release.version` holds the version label its author gave, and
-  `Platform.changelog` returns what a release changed as plain text, converted
-  from HTML on CurseForge.
-- `Platform.get_projects` looks up many projects at once. `Instance.plan`,
-  `Instance.plan_updates` and `Instance.adopt` use it, so they need far fewer
-  requests.
 
 ### Removed
 
@@ -43,8 +45,6 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
-- Packs that declare no mod loader can be read and installed. Before, they
-  were rejected, although the formats allow them.
 - CurseForge searches return the most popular matches first. Before, they came
   back in no useful order, so searching for `jei` did not find JEI.
 - CurseForge releases list only game versions in `game_versions`, and their
@@ -52,6 +52,8 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   held labels such as `Client` and `Fabric`, and `loaders` was empty.
 - `CurseForge.get_project` finds a slug even when it belongs to another kind of
   project than the one asked for.
+- Packs that declare no mod loader can be read and installed. Before, they
+  were rejected, although the formats allow them.
 
 ## [0.3.0] - 2026-11-03
 
