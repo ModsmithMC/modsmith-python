@@ -72,6 +72,8 @@ LOADER_TAGS = frozenset(
 )
 # The most hashes to send in one request.
 BATCH_SIZE = 500
+# The role Modrinth gives a project's creator, unless the team renames it.
+OWNER_ROLE = "Owner"
 
 
 class _Hit(BaseModel):
@@ -189,6 +191,19 @@ class _Version(BaseModel):
 def _project_url(project_type: str, slug: str) -> str:
     """Return a project's web page."""
     return f"{SITE_URL}/{project_type}/{slug}"
+
+
+class _User(BaseModel):
+    """A user from the Modrinth API."""
+
+    username: str
+
+
+class _Member(BaseModel):
+    """A member of a project's team from the Modrinth API."""
+
+    role: str = ""
+    user: _User
 
 
 class Modrinth(Platform):
@@ -401,6 +416,23 @@ class Modrinth(Platform):
         """
         data = self._get(f"/version/{release_id}")
         return self._to_release(_Version.model_validate(data))
+
+    def authors(self, project: Project) -> tuple[str, ...]:
+        """Return the members of a project's team, the owner first.
+
+        Args:
+            project: The project.
+
+        Returns:
+            Their user names.
+
+        Raises:
+            NetworkError: Modrinth could not be reached or does not know it.
+        """
+        data: list[Any] = self._get(f"/project/{project.id}/members")
+        members = [_Member.model_validate(item) for item in data]
+        members.sort(key=lambda item: item.role != OWNER_ROLE)
+        return tuple(dict.fromkeys(item.user.username for item in members))
 
     def changelog(self, release: Release) -> str:
         """Return what changed in a release. Modrinth changelogs are Markdown.
