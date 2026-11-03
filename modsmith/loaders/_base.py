@@ -100,6 +100,8 @@ class Loader(ABC):
 
 _registry: dict[str, type[Loader]] = {}
 _aliases = {"fabric-loader": "fabric", "quilt-loader": "quilt"}
+# Quilt loads Fabric mods, so a Fabric release can stand in for a Quilt one.
+LOADER_FALLBACKS = {"quilt": ("quilt", "fabric")}
 
 
 def loader_name(kind: str) -> str:

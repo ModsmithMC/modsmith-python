@@ -9,7 +9,7 @@ from pathlib import Path
 
 import requests
 
-from .._support import replace_file
+from .._fs import replace_file
 from ..errors import Cancelled, DownloadError, IntegrityError, NetworkError
 from ..progress import CancelToken, ProgressCallback, report
 from ._resource import Resource, matches, strongest_hash

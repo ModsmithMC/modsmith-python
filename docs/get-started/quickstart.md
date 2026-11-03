@@ -47,7 +47,7 @@ version_id = pack.loader.install(game)
 Each pack gets its own folder, called an instance. Its mods and settings stay separate from your other games.
 
 ```python
-instance = ms.instances.Instance.open("instances/fabulously-optimized")
+instance = ms.instances.Instance("instances/fabulously-optimized")
 changes = instance.sync(pack)
 
 print(len(changes.added), "files added")

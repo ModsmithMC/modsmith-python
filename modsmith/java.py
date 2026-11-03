@@ -10,12 +10,11 @@ from pathlib import Path
 from typing import Any
 
 from ._locks import file_lock
-from ._support import default_cache_dir
+from ._paths import default_cache_dir
 from .errors import JavaError
 from .minecraft import GameDir, Version
-from .net import Resource, Session, file_hash
+from .net import Resource, Session, file_hash, session_scope
 from .net import download as fetch
-from .net._session import session_scope
 from .progress import CancelToken, ProgressCallback
 
 __all__ = [
@@ -23,8 +22,6 @@ __all__ = [
     "download",
     "find",
     "find_all",
-    "official_runtime_dirs",
-    "platform_key",
     "required_for",
 ]
 

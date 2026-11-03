@@ -7,8 +7,7 @@ from typing import Any, ClassVar, Literal
 
 from pydantic import BaseModel, Field
 
-from ..net import Session, file_hash
-from ..net._session import DEFAULT_USER_AGENT
+from ..net import DEFAULT_USER_AGENT, Session, file_hash
 from ..progress import CancelToken, ProgressCallback
 from ._base import (
     Dependency,

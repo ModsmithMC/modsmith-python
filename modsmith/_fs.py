@@ -1,32 +1,11 @@
-"""Internal helpers for files and names."""
+"""Internal helpers that write and replace files safely."""
 
 import errno
 import json
 import os
-import re
 import shutil
 from pathlib import Path
 from typing import IO, Any
-
-from platformdirs import user_cache_path
-
-
-def default_cache_dir() -> Path:
-    """Return the per-user directory used for caches by default."""
-    return user_cache_path("modsmith", appauthor=False)
-
-
-def slugify(name: str, fallback: str = "instance") -> str:
-    """Turn a display name into a lowercase, hyphenated slug.
-
-    Args:
-        name: The display name.
-        fallback: Returned when ``name`` has no ASCII letters or digits.
-
-    Returns:
-        The slug.
-    """
-    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or fallback
 
 
 def copy_replace(source: Path, dest: Path) -> None:

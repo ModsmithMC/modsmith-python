@@ -8,7 +8,7 @@ from modsmith.errors import ModsmithError
 
 try:
     pack = ms.packs.load("pack.mrpack")
-    instance = ms.instances.Instance.open("instances/my-pack")
+    instance = ms.instances.Instance("instances/my-pack")
     instance.sync(pack)
 except ModsmithError as error:
     print(f"Install failed: {error}")

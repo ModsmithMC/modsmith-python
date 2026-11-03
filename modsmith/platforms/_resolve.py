@@ -6,10 +6,8 @@ from dataclasses import dataclass
 from ..errors import NetworkError, PlatformError, UnsupportedError
 from ..packs import FileRef
 from ..progress import CancelToken
-from ._base import Dependency, Platform, Project, Release
+from ._base import Dependency, Platform, Release
 
-# Quilt loads Fabric mods, so a Fabric release can fill a Quilt dependency.
-LOADER_FALLBACKS = {"quilt": ("quilt", "fabric")}
 NOT_FOUND = 404
 
 
@@ -64,33 +62,6 @@ def _is_missing(error: NetworkError) -> bool:
     return error.status == NOT_FOUND
 
 
-def newest_release(
-    platform: Platform,
-    project: Project,
-    *,
-    game_version: str | None,
-    loader: str | None,
-    release_only: bool,
-) -> Release | None:
-    """Return a project's newest release for a game version and loader, if any.
-
-    For the Quilt loader, a Fabric release is used when there is no Quilt one.
-    A ``loader`` of None accepts any loader.
-    """
-    loaders = LOADER_FALLBACKS.get(loader, (loader,)) if loader else (None,)
-    for item in loaders:
-        releases = platform.iter_releases(
-            project,
-            game_version=game_version,
-            loader=item,
-            release_only=release_only,
-        )
-        release = next(releases, None)
-        if release is not None:
-            return release
-    return None
-
-
 def _id(item: Release | FileRef) -> str:
     """Return the release id of a release or a file reference."""
     return item.id if isinstance(item, Release) else item.file_id
@@ -125,8 +96,7 @@ class _Resolver:
     def _newest(self, project_id: str) -> Release | None:
         """Return a project's newest compatible release, if it has one."""
         project = self.platform.get_project(project_id, project_type="mod")
-        return newest_release(
-            self.platform,
+        return self.platform.latest_release(
             project,
             game_version=self.game_version,
             loader=self.loader,

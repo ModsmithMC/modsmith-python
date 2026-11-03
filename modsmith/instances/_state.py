@@ -8,11 +8,10 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
-from .._support import write_json
+from .._fs import write_json
 from ..errors import InstanceError
-from ..loaders._base import loader_name
-from ..net import file_hash
-from ..net._resource import strongest_hash
+from ..loaders import loader_name
+from ..net import file_hash, strongest_hash
 from ..packs import FileRef, PackEntry
 
 STATE_DIR = ".modsmith"

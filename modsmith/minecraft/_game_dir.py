@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .._support import write_json
+from .._fs import write_json
 from ..errors import UnsupportedError
 from ._maven import maven_path
 

@@ -32,7 +32,7 @@ def pack_of(tmp_path, files=(), overrides=None, version="1.0", name="p.mrpack"):
 
 @pytest.fixture
 def instance(tmp_path):
-    return Instance.open(tmp_path / "game")
+    return Instance(tmp_path / "game")
 
 
 def test_first_sync_installs_everything(server, session, instance, tmp_path):

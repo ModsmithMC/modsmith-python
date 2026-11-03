@@ -14,7 +14,7 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path, PurePosixPath
 from typing import Any, Literal, cast
 
-from .platforms._resolve import LOADER_FALLBACKS
+from .loaders import LOADER_FALLBACKS
 
 __all__ = ["Metadata", "read"]
 

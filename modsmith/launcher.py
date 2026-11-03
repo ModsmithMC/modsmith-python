@@ -2,6 +2,7 @@
 
 import base64
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -11,7 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from ._support import slugify, write_json
+from ._fs import write_json
 from .errors import LauncherError
 from .minecraft import GameDir
 
@@ -57,6 +58,19 @@ def _process_names() -> set[str]:
     except (OSError, subprocess.SubprocessError):
         return set()
     return parse_tasklist(output) if windows else parse_ps(output)
+
+
+def _slugify(name: str, fallback: str = "instance") -> str:
+    """Turn a display name into a lowercase, hyphenated slug.
+
+    Args:
+        name: The display name.
+        fallback: Returned when ``name`` has no ASCII letters or digits.
+
+    Returns:
+        The slug.
+    """
+    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or fallback
 
 
 def is_running() -> bool:
@@ -106,25 +120,17 @@ class Profile:
     java_args: str | None = None
     icon: str | None = None
 
-    @classmethod
-    def from_dict(cls, key: str, data: dict[str, Any]) -> "Profile":
-        """Build a profile from the launcher's JSON.
 
-        Args:
-            key: The profile's key.
-            data: The profile's JSON.
-
-        Returns:
-            The parsed profile.
-        """
-        return cls(
-            key=key,
-            name=data.get("name", key),
-            version_id=data.get("lastVersionId"),
-            game_dir=data.get("gameDir"),
-            java_args=data.get("javaArgs"),
-            icon=data.get("icon"),
-        )
+def _profile(key: str, data: dict[str, Any]) -> Profile:
+    """Build a profile from the launcher's JSON."""
+    return Profile(
+        key=key,
+        name=data.get("name", key),
+        version_id=data.get("lastVersionId"),
+        game_dir=data.get("gameDir"),
+        java_args=data.get("javaArgs"),
+        icon=data.get("icon"),
+    )
 
 
 class Launcher:
@@ -143,7 +149,7 @@ class Launcher:
     def __init__(self, game: GameDir | None = None) -> None:
         self.game = game or GameDir.default()
 
-    def profile_files(self) -> list[Path]:
+    def _profile_files(self) -> list[Path]:
         """List the launcher's profile files that exist.
 
         Returns:
@@ -169,7 +175,7 @@ class Launcher:
 
     def _update(self, change: Callable[[dict[str, Any]], None]) -> None:
         """Apply a change to the profiles in every file, with a backup."""
-        for path in self.profile_files():
+        for path in self._profile_files():
             data = self._read(path)
             change(data.setdefault("profiles", {}))
             shutil.copy2(path, path.with_name(path.name + BACKUP_SUFFIX))
@@ -185,9 +191,9 @@ class Launcher:
             LauncherError: No profile file exists, or one cannot be parsed.
         """
         result: dict[str, Profile] = {}
-        for path in self.profile_files():
+        for path in self._profile_files():
             for key, value in self._read(path).get("profiles", {}).items():
-                result.setdefault(key, Profile.from_dict(key, value))
+                result.setdefault(key, _profile(key, value))
         return result
 
     def add_profile(
@@ -220,7 +226,7 @@ class Launcher:
         Raises:
             LauncherError: No profile file exists, or one cannot be parsed.
         """
-        key = key or KEY_PREFIX + slugify(name)
+        key = key or KEY_PREFIX + _slugify(name)
         now = _timestamp()
         values: dict[str, Any] = {
             "name": name,

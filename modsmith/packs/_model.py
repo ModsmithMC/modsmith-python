@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import IO, Literal
 
-from .._support import write_atomic
+from .._fs import write_atomic
 from ..errors import PackError
 from ..loaders import Loader, create
 from ..net import Resource
@@ -214,6 +214,9 @@ class Modpack:
 
     def iter_overrides(self, side: Side = "client") -> Iterator[tuple[str, bytes]]:
         """Yield the pack's override files with their contents.
+
+        Each file is read into memory whole. Use `iter_override_files` for
+        packs with large files.
 
         Args:
             side: The side to read.

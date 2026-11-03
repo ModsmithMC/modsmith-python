@@ -4,18 +4,13 @@ import threading
 import time
 from collections.abc import Collection, Generator, Mapping
 from contextlib import contextmanager
-from importlib.metadata import PackageNotFoundError, version
 from types import TracebackType
 from typing import Any, Self
 
 import requests
 
+from .._version import __version__
 from ..errors import NetworkError
-
-try:
-    __version__ = version("modsmith")
-except PackageNotFoundError:
-    __version__ = "0.0.0"
 
 DEFAULT_USER_AGENT = f"modsmith/{__version__} (https://github.com/PaPa-jun/Modsmith)"
 DEFAULT_TIMEOUT = (10.0, 60.0)

@@ -90,7 +90,7 @@ with ms.platforms.Modrinth("my-tool/1.0") as modrinth:
 game = ms.minecraft.GameDir.default()
 version_id = pack.loader.install(game)
 
-instance = ms.instances.Instance.open("instances/fabulously-optimized")
+instance = ms.instances.Instance("instances/fabulously-optimized")
 instance.sync(pack)
 
 ms.launcher.Launcher(game).add_profile(pack.name, version_id, instance.path)

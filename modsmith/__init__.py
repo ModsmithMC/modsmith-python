@@ -15,7 +15,7 @@ from . import (
     platforms,
     progress,
 )
-from .net._session import __version__
+from ._version import __version__
 from .progress import CancelToken, Progress
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())

@@ -4,8 +4,9 @@ from pathlib import Path
 import pytest
 
 import modsmith as ms
-from modsmith._support import copy_replace, replace_file, slugify, write_atomic
+from modsmith._fs import copy_replace, replace_file, write_atomic
 from modsmith.errors import Cancelled
+from modsmith.launcher import _slugify as slugify
 
 
 def test_write_atomic_creates_parents_and_leaves_no_temp_file(tmp_path):

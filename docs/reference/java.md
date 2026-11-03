@@ -27,6 +27,4 @@ Find Java runtimes from the official launcher, or download Mojang's.
    :toctree: java
    :nosignatures:
 
-   official_runtime_dirs
-   platform_key
 ```

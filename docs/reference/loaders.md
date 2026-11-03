@@ -42,16 +42,3 @@ Install mod loaders.
    ProcessorLoader
    register
 ```
-
-## Installers
-
-```{eval-rst}
-.. autosummary::
-   :toctree: loaders
-   :nosignatures:
-
-   InstallerJar
-   InstallProfile
-   Library
-   Processor
-```

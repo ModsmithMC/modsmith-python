@@ -10,11 +10,10 @@ from typing import ClassVar
 
 from .. import java as java_runtime
 from .._locks import GAME_LOCK, file_lock
-from .._support import default_cache_dir
+from .._paths import default_cache_dir
 from ..errors import JavaError, LoaderError, NetworkError, ProcessorError
 from ..minecraft import GameDir, install_version
-from ..net import Resource, Session, download
-from ..net._session import session_scope
+from ..net import Resource, Session, download, session_scope
 from ..progress import CancelToken, ProgressCallback
 from ._base import Loader, register
 from ._install_profile import InstallerJar, Library, Variables
@@ -40,7 +39,7 @@ class ProcessorLoader(Loader):
     def installer_url(self) -> str:
         """Return where this version's installer jar is published."""
 
-    def fetch_installer(
+    def _fetch_installer(
         self, *, session: Session | None = None, cache_dir: Path | None = None
     ) -> InstallerJar:
         """Return this version's installer, downloading it if it is not cached.
@@ -91,7 +90,7 @@ class ProcessorLoader(Loader):
             LoaderError: The installer is malformed.
             UnsupportedError: The installer is older than Minecraft 1.13.
         """
-        return self.fetch_installer(session=session, cache_dir=cache_dir).version_id
+        return self._fetch_installer(session=session, cache_dir=cache_dir).version_id
 
     def _resource(self, library: Library, game: GameDir) -> Resource | None:
         """Describe a library's download, or None if the installer provided it."""
@@ -147,7 +146,7 @@ class ProcessorLoader(Loader):
             cache_dir = Path(cache_dir).resolve()  # processors run in another directory
         lock = file_lock(game.path / GAME_LOCK, cancel=cancel)
         with lock, session_scope(session) as client:
-            installer = self.fetch_installer(session=client, cache_dir=cache_dir)
+            installer = self._fetch_installer(session=client, cache_dir=cache_dir)
             if game.has_version(installer.version_id):
                 return installer.version_id
             if installer.profile.minecraft != self.minecraft:

@@ -6,7 +6,6 @@ import modsmith as ms
 from modsmith.errors import Cancelled, UnsupportedError
 from modsmith.packs import FileRef
 from modsmith.platforms import Project, resolve_dependencies
-from modsmith.platforms._resolve import newest_release
 from tests.lib.catalog import Catalog, on, release
 
 
@@ -256,13 +255,35 @@ def test_file_references_from_other_platforms_are_ignored():
     ]
 
 
-def test_newest_release_with_any_loader():
+def test_latest_release_with_any_loader():
     catalog = Catalog(release("p", "2", loader="iris"), release("p", "1"))
     project = Project("catalog", "p", "p", "P")
-    options = {"game_version": "1.21.1", "release_only": True}
-    assert newest_release(catalog, project, loader=None, **options).id == "p-2"
-    assert newest_release(catalog, project, loader="fabric", **options).id == "p-1"
-    assert newest_release(catalog, project, loader="forge", **options) is None
+    assert catalog.latest_release(project).id == "p-2"
+    assert catalog.latest_release(project, loader="fabric").id == "p-1"
+    assert catalog.latest_release(project, loader="forge") is None
+
+
+def test_latest_release_falls_back_from_quilt_to_fabric():
+    catalog = Catalog(release("p", "2"), release("p", "1", loader="quilt"))
+    project = Project("catalog", "p", "p", "P")
+    assert catalog.latest_release(project, loader="quilt").id == "p-1"
+    assert (
+        Catalog(release("p", "2")).latest_release(project, loader="quilt").id == "p-2"
+    )
+
+
+def test_latest_release_filters_game_version_and_pre_releases():
+    catalog = Catalog(
+        release("p", "3", release_type="beta"),
+        release("p", "2", game="1.20.1"),
+        release("p", "1"),
+    )
+    project = Project("catalog", "p", "p", "P")
+    assert catalog.latest_release(project).id == "p-3"
+    assert catalog.latest_release(project, release_only=True).id == "p-2"
+    assert catalog.latest_release(project, game_version="1.21.1").id == "p-3"
+    found = catalog.latest_release(project, game_version="1.21.1", release_only=True)
+    assert found.id == "p-1"
 
 
 @pytest.mark.parametrize(

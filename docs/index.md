@@ -56,7 +56,7 @@ pack = ms.packs.load("fabulously-optimized.mrpack")
 game = ms.minecraft.GameDir.default()
 version_id = pack.loader.install(game)
 
-instance = ms.instances.Instance.open("instances/my-pack")
+instance = ms.instances.Instance("instances/my-pack")
 instance.sync(pack)
 
 launcher = ms.launcher.Launcher(game)

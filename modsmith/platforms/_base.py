@@ -8,6 +8,7 @@ from types import TracebackType
 from typing import ClassVar, Literal, Self
 
 from ..errors import PlatformError, UnsupportedError
+from ..loaders import LOADER_FALLBACKS
 from ..net import Resource, Session, download
 from ..packs import Modpack
 from ..progress import CancelToken, ProgressCallback, report
@@ -323,6 +324,45 @@ class Platform(ABC):
             Cancelled: ``cancel`` was triggered.
         """
         return {}
+
+    def latest_release(
+        self,
+        project: Project,
+        *,
+        game_version: str | None = None,
+        loader: str | None = None,
+        release_only: bool = False,
+    ) -> Release | None:
+        """Return a project's newest release for a game version and loader.
+
+        It reads only as many pages as it needs. For the Quilt loader, a Fabric
+        release is used when there is no Quilt one, because Quilt loads Fabric
+        mods.
+
+        Args:
+            project: The project.
+            game_version: Only consider this Minecraft version.
+            loader: Only consider this mod loader. None accepts any loader.
+            release_only: Leave out alpha and beta releases.
+
+        Returns:
+            The release, or None if there is none.
+
+        Raises:
+            NetworkError: The platform could not be reached.
+        """
+        loaders = LOADER_FALLBACKS.get(loader, (loader,)) if loader else (None,)
+        for item in loaders:
+            releases = self.iter_releases(
+                project,
+                game_version=game_version,
+                loader=item,
+                release_only=release_only,
+            )
+            release = next(releases, None)
+            if release is not None:
+                return release
+        return None
 
     def list_releases(
         self,

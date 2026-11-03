@@ -7,8 +7,7 @@ from typing import Any, ClassVar
 
 from .._locks import GAME_LOCK, file_lock
 from ..minecraft import GameDir, install_version, maven_path
-from ..net import Resource, Session, download
-from ..net._session import session_scope
+from ..net import Resource, Session, download, session_scope
 from ..progress import CancelToken, ProgressCallback
 from ._base import Loader, register
 

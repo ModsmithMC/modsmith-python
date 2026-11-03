@@ -43,7 +43,3 @@ for runtime in ms.java.find_all(game=game):
 ## Not every runtime exists everywhere
 
 Mojang does not publish every component for every system. For example, `jre-legacy` has no build for Apple Silicon, so `download` raises `modsmith.errors.JavaError` there.
-
-```python
-print(ms.java.platform_key())
-```
