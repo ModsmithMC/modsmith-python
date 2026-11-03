@@ -53,6 +53,10 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A dependency whose project has only alpha or beta releases, such as a new
+  library mod, gets its newest one even with `release_only`, instead of making
+  the release that needs it impossible to install. `MissingDependency.project`
+  names the project of a dependency that still cannot be met.
 - CurseForge searches return the most popular matches first. Before, they came
   back in no useful order, so searching for `jei` did not find JEI.
 - CurseForge releases list only game versions in `game_versions`, and their

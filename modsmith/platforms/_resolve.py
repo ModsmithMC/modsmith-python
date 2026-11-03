@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from ..errors import NetworkError, PlatformError, UnsupportedError
 from ..packs import FileRef
 from ..progress import CancelToken
-from ._base import Dependency, Platform, Release
+from ._base import Dependency, Platform, Project, Release
 
 NOT_FOUND = 404
 
@@ -35,10 +35,13 @@ class MissingDependency:
     Attributes:
         release: The release that declares the dependency.
         dependency: The dependency that cannot be found.
+        project: The project it names, or None if the platform does not know
+            it or the dependency names only a release.
     """
 
     release: Release
     dependency: Dependency
+    project: Project | None = None
 
 
 @dataclass(frozen=True)
@@ -93,15 +96,22 @@ class _Resolver:
         self.conflicts: list[Conflict] = []
         self.missing: list[MissingDependency] = []
 
-    def _newest(self, project_id: str) -> Release | None:
-        """Return a project's newest compatible release, if it has one."""
-        project = self.platform.get_project(project_id, project_type="mod")
-        return self.platform.latest_release(
-            project,
-            game_version=self.game_version,
-            loader=self.loader,
-            release_only=self.release_only,
-        )
+    def _newest(self, project: Project) -> Release | None:
+        """Return a project's newest compatible release, if it has one.
+
+        A project with only alpha or beta releases gets its newest one, since
+        the release that depends on it cannot work without it.
+        """
+        for release_only in dict.fromkeys((self.release_only, False)):
+            found = self.platform.latest_release(
+                project,
+                game_version=self.game_version,
+                loader=self.loader,
+                release_only=release_only,
+            )
+            if found is not None:
+                return found
+        return None
 
     def _release(self, item: Release | FileRef) -> Release:
         """Return the release behind an installed file, to report it."""
@@ -122,17 +132,21 @@ class _Resolver:
         self.installed[item.project_id] = release
         return release
 
-    def _find(self, dependency: Dependency) -> Release | None:
-        """Fetch the release a dependency asks for, if it exists."""
+    def _find(self, dependency: Dependency) -> tuple[Project | None, Release | None]:
+        """Fetch the release a dependency asks for, and its project if looked up."""
+        project: Project | None = None
         try:
             if dependency.release_id is not None:
-                return self.platform.get_release(dependency.release_id)
-            return self._newest(str(dependency.project_id))
+                return None, self.platform.get_release(dependency.release_id)
+            project = self.platform.get_project(
+                str(dependency.project_id), project_type="mod"
+            )
+            return project, self._newest(project)
         except PlatformError:
-            return None
+            return project, None
         except NetworkError as e:
             if _is_missing(e):
-                return None
+                return project, None
             raise
 
     def _current(self, project_id: str | None) -> Release | FileRef | None:
@@ -145,9 +159,9 @@ class _Resolver:
         """Meet one required or optional dependency of a release."""
         current = self._current(dependency.project_id)
         if current is None:
-            found = self._find(dependency)
+            project, found = self._find(dependency)
             if found is None:
-                self.missing.append(MissingDependency(release, dependency))
+                self.missing.append(MissingDependency(release, dependency, project))
                 return
             current = self._current(found.project_id)
             if current is None:
@@ -217,7 +231,9 @@ def resolve_dependencies(
     """Work out which releases to install so that dependencies are met.
 
     A dependency on an exact release uses that release, and any other uses the
-    project's newest compatible release. Each project gets one release, and the
+    project's newest compatible release. With ``release_only``, a project that
+    has only alpha and beta releases still gets its newest one, because the
+    release that needs it cannot work without it. Each project gets one release, and the
     first choice stands: a later request for another version is a conflict, not
     a new search. For the Quilt loader, Fabric releases are used when a project
     has no Quilt release.
@@ -231,7 +247,8 @@ def resolve_dependencies(
         game_version: The Minecraft version.
         loader: The mod loader.
         include_optional: Also install optional dependencies.
-        release_only: Leave out alpha and beta releases when choosing a version.
+        release_only: Leave out alpha and beta releases when choosing a version,
+            unless a dependency has nothing else.
         installed: What is already in place, such as the results of
             `Platform.identify` or the `FileRef` of a pack's entries. These meet
             dependencies without being installed. References to other
