@@ -13,8 +13,9 @@ from ._locks import file_lock
 from ._paths import default_cache_dir
 from .errors import JavaError
 from .minecraft import GameDir, Version
-from .net import Resource, Session, file_hash, session_scope
+from .net import Resource, Session, file_hash
 from .net import download as fetch
+from .net._session import session_scope
 from .progress import CancelToken, ProgressCallback
 
 __all__ = [
@@ -177,7 +178,7 @@ def find_all(
 
 def _unpack(packed: Path, path: Path, sha1: str, cancel: CancelToken | None) -> None:
     """Decompress an LZMA file, check its hash and delete the archive."""
-    with lzma.open(packed) as source, open(path, "wb") as dest:
+    with lzma.open(packed) as source, path.open("wb") as dest:
         while chunk := source.read(1 << 20):
             if cancel is not None:
                 cancel.check()
@@ -186,6 +187,30 @@ def _unpack(packed: Path, path: Path, sha1: str, cancel: CancelToken | None) -> 
     if file_hash(path) != sha1:
         path.unlink()
         raise JavaError(f"Corrupt Java runtime file: {path.name}")
+
+
+def _plan_file(
+    path: Path, entry: dict[str, Any]
+) -> tuple[Resource, tuple[Path, Path, str] | None] | None:
+    """Plan one runtime file's download, or return None if it is in place.
+
+    Returns:
+        What to download, and the packed file to unpack afterwards, if the
+        download is compressed.
+    """
+    raw = entry["downloads"]["raw"]
+    if path.is_file() and file_hash(path) == raw["sha1"]:
+        return None
+    compressed = entry["downloads"].get("lzma")
+    if not compressed:
+        return Resource.of(
+            raw["url"], path, {"sha1": raw["sha1"]}, raw.get("size")
+        ), None
+    packed = path.with_name(path.name + ".lzma")
+    resource = Resource.of(
+        compressed["url"], packed, {"sha1": compressed["sha1"]}, compressed.get("size")
+    )
+    return resource, (packed, path, raw["sha1"])
 
 
 def _install_entries(
@@ -208,31 +233,26 @@ def _install_entries(
         elif kind == "link":
             links.append((path, entry["target"]))
         elif kind == "file":
-            raw = entry["downloads"]["raw"]
-            compressed = entry["downloads"].get("lzma")
             if entry.get("executable"):
                 executables.append(path)
-            if path.is_file() and file_hash(path) == raw["sha1"]:
-                continue
-            if compressed:
-                packed = path.with_name(path.name + ".lzma")
-                resources.append(
-                    Resource.of(
-                        compressed["url"],
-                        packed,
-                        {"sha1": compressed["sha1"]},
-                        compressed.get("size"),
-                    )
-                )
-                packed_files.append((packed, path, raw["sha1"]))
-            else:
-                resources.append(
-                    Resource.of(
-                        raw["url"], path, {"sha1": raw["sha1"]}, raw.get("size")
-                    )
-                )
+            planned = _plan_file(path, entry)
+            if planned is not None:
+                resource, packed = planned
+                resources.append(resource)
+                if packed is not None:
+                    packed_files.append(packed)
 
     fetch(resources, session=session, progress=progress, cancel=cancel, task="java")
+    _finish_files(packed_files, executables, links, cancel)
+
+
+def _finish_files(
+    packed_files: list[tuple[Path, Path, str]],
+    executables: list[Path],
+    links: list[tuple[Path, str]],
+    cancel: CancelToken | None,
+) -> None:
+    """Unpack compressed files, mark executables and create links."""
     for packed, path, sha1 in packed_files:
         _unpack(packed, path, sha1, cancel)
     for path in executables:

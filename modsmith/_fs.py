@@ -2,7 +2,6 @@
 
 import errno
 import json
-import os
 import shutil
 from pathlib import Path
 from typing import IO, Any
@@ -28,7 +27,7 @@ def replace_file(source: Path, dest: Path) -> None:
         OSError: The rename failed for another reason, or the copy failed.
     """
     try:
-        os.replace(source, dest)
+        source.replace(dest)
     except OSError as e:
         if e.errno != errno.EXDEV:
             raise
@@ -46,7 +45,7 @@ def write_atomic(path: Path, data: bytes | IO[bytes]) -> None:
     """
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_name(path.name + ".tmp")
-    with open(temp, "wb") as file:
+    with temp.open("wb") as file:
         if isinstance(data, bytes):
             file.write(data)
         else:

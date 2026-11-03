@@ -4,7 +4,8 @@ from dataclasses import dataclass
 
 from .._locks import GAME_LOCK, file_lock
 from ..errors import UnsupportedError
-from ..net import Resource, Session, download, session_scope
+from ..net import Resource, Session, download
+from ..net._session import session_scope
 from ..progress import CancelToken, ProgressCallback
 from ._game_dir import GameDir, Version
 

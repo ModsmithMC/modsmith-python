@@ -6,13 +6,17 @@ import zipfile
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
+
+from pydantic import TypeAdapter
 
 from .._fs import write_json
 from ..errors import InstanceError
-from ..loaders import loader_name
-from ..net import file_hash, strongest_hash
+from ..loaders._base import loader_name
+from ..net import file_hash
+from ..net._resource import strongest_hash
 from ..packs import FileRef, PackEntry
+from ..platforms import ProjectType
 
 STATE_DIR = ".modsmith"
 STATE_FILE = f"{STATE_DIR}/instance.json"
@@ -46,7 +50,7 @@ class Addition:
     entry: PackEntry
     name: str
     slug: str = ""
-    project_type: str = "mod"
+    project_type: ProjectType = "mod"
     sha1: str = ""
     requested: bool = True
     requires: tuple[str, ...] = ()
@@ -163,37 +167,13 @@ class ContentFile:
         return self.path if self.enabled else self.path + DISABLED_SUFFIX
 
 
-def _entry(data: dict[str, Any]) -> PackEntry:
-    """Rebuild a `PackEntry` from its saved form."""
-    ref = data.get("ref")
-    return PackEntry(
-        path=data.get("path"),
-        urls=tuple(data.get("urls", ())),
-        hashes=dict(data.get("hashes", {})),
-        size=data.get("size"),
-        client=data.get("client", "required"),
-        server=data.get("server", "required"),
-        ref=FileRef(**ref) if ref else None,
-        manual_url=data.get("manual_url"),
-    )
-
-
-def _addition(data: dict[str, Any]) -> Addition:
-    """Rebuild an `Addition` from its saved form."""
-    return Addition(
-        entry=_entry(data["entry"]),
-        name=data["name"],
-        slug=data.get("slug", ""),
-        project_type=data.get("project_type", "mod"),
-        sha1=data.get("sha1", ""),
-        requested=data.get("requested", True),
-        requires=tuple(data.get("requires", ())),
-        pinned=data.get("pinned", False),
-    )
+_STATE = TypeAdapter(InstanceState)
 
 
 def read_state(path: Path) -> InstanceState | None:
     """Read a state file, or return None if there is none.
+
+    Fields this version does not know are ignored, so newer files still load.
 
     Raises:
         InstanceError: The file is corrupt.
@@ -201,15 +181,14 @@ def read_state(path: Path) -> InstanceState | None:
     if not path.is_file():
         return None
     try:
-        data: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
-        data["kept"] = tuple(data.get("kept", ()))
-        # Version 0.2 kept the pack's own name, such as ``fabric-loader``.
-        if data.get("loader_kind"):
-            data["loader_kind"] = loader_name(data["loader_kind"])
-        data["additions"] = tuple(_addition(item) for item in data.get("additions", ()))
-        data["pack_refs"] = tuple(FileRef(**item) for item in data.get("pack_refs", ()))
-        return InstanceState(**data)
-    except (ValueError, TypeError, KeyError) as e:
+        data: Any = json.loads(path.read_text(encoding="utf-8"))
+        if isinstance(data, dict):
+            fields = cast(dict[str, Any], data)
+            # Version 0.2 kept the pack's own name, such as ``fabric-loader``.
+            if fields.get("loader_kind"):
+                fields["loader_kind"] = loader_name(str(fields["loader_kind"]))
+        return _STATE.validate_python(data)
+    except ValueError as e:
         raise InstanceError(f"Corrupt instance state in {path.parent}: {e}") from e
 
 

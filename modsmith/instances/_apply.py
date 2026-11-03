@@ -12,7 +12,9 @@ from pathlib import Path
 
 from .._fs import replace_file, write_atomic
 from ..errors import InstanceError, UnresolvedEntriesError
-from ..net import Session, download, matches, session_scope, stream_hash
+from ..net import Session, download
+from ..net._resource import matches, stream_hash
+from ..net._session import session_scope
 from ..packs import Modpack, PackEntry, Side
 from ..progress import CancelToken, ProgressCallback, report
 from ._state import (

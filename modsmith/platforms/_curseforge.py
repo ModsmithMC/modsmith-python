@@ -67,7 +67,9 @@ LOADER_TYPES = {"forge": 1, "fabric": 4, "quilt": 5, "neoforge": 6}
 class _Schema(BaseModel):
     """Base for CurseForge API models, which use camelCase names."""
 
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    model_config: ClassVar[ConfigDict] = ConfigDict(
+        alias_generator=to_camel, populate_by_name=True
+    )
 
 
 class _Hash(_Schema):
@@ -201,7 +203,7 @@ class CurseForge(Platform):
         if not api_key:
             raise PlatformError("CurseForge requires an API key")
         self.api_key = api_key
-        self.base_url = base_url.rstrip("/")
+        self.base_url: str = base_url.rstrip("/")
 
     @property
     def _headers(self) -> dict[str, str]:

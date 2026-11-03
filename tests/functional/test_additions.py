@@ -385,3 +385,18 @@ def test_state_from_older_versions_still_reads(tmp_path):
     assert state.loader_kind == "fabric"
     assert state.additions == ()
     assert state.pack_refs == ()
+
+
+def test_state_from_newer_versions_still_reads(tmp_path):
+    path = tmp_path / "game" / ".modsmith" / "instance.json"
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps({"minecraft": "1.21.1", "added_later": True}))
+    assert Instance(tmp_path / "game").state.minecraft == "1.21.1"
+
+
+def test_corrupt_state_is_an_instance_error(tmp_path):
+    path = tmp_path / "game" / ".modsmith" / "instance.json"
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps({"minecraft": "1.21.1", "kept": 5}))
+    with pytest.raises(InstanceError):
+        _ = Instance(tmp_path / "game").state

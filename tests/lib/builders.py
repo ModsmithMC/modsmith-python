@@ -2,7 +2,6 @@
 
 import hashlib
 import json
-import os
 import subprocess
 import sys
 import zipfile
@@ -80,7 +79,7 @@ def link_directory(target: Path, link: Path) -> None:
 
         _winapi.CreateJunction(str(target), str(link))
     else:
-        os.symlink(target, link, target_is_directory=True)
+        link.symlink_to(target, target_is_directory=True)
 
 
 def build_processor_jars(dest: Path, javac: str) -> tuple[Path, Path]:

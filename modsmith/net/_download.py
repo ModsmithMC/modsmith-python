@@ -13,7 +13,7 @@ from .._fs import replace_file
 from ..errors import Cancelled, DownloadError, IntegrityError, NetworkError
 from ..progress import CancelToken, ProgressCallback, report
 from ._resource import Resource, matches, strongest_hash
-from ._session import Session, is_retryable
+from ._session import Session, is_retryable, session_scope
 
 logger = logging.getLogger(__name__)
 CHUNK_SIZE = 65536
@@ -97,7 +97,7 @@ def _stream(
         if validator:
             validators[url] = validator
         meter.reset(offset if resuming else 0)
-        with open(part, "ab" if resuming else "wb") as file:
+        with part.open("ab" if resuming else "wb") as file:
             for chunk in response.iter_content(CHUNK_SIZE):
                 if cancel is not None:
                     cancel.check()
@@ -135,30 +135,53 @@ def _fetch(
     validators: dict[str, str] = {}
     last: Exception | None = None
     for url in resource.urls:
-        for attempt in range(session.attempts):
-            if attempt:
-                session.wait(attempt - 1)
-            if cancel is not None:
-                cancel.check()
-            try:
-                _stream(url, resource, part, session, meter, cancel, validators)
-                _verify(resource, part)
-            except IntegrityError as e:
-                part.unlink(missing_ok=True)
-                last = e
-                continue
-            except NetworkError as e:
-                last = e
-                break
-            except requests.RequestException as e:
-                last = e
-                if not is_retryable(e):
-                    break
-                continue
+        last = _try_url(url, resource, part, session, meter, cancel, validators)
+        if last is None:
             replace_file(part, resource.path)
             return
         logger.warning("Download from %s failed: %s", url, last)
     raise DownloadError(f"Failed to download {resource.path.name}: {last}") from last
+
+
+def _try_url(
+    url: str,
+    resource: Resource,
+    part: Path,
+    session: Session,
+    meter: _Meter,
+    cancel: CancelToken | None,
+    validators: dict[str, str],
+) -> Exception | None:
+    """Download from one URL, retrying broken transfers and bad files.
+
+    Returns:
+        None once ``part`` holds a verified file, or the last error.
+
+    Raises:
+        Cancelled: ``cancel`` was triggered.
+    """
+    last: Exception | None = None
+    for attempt in range(session.attempts):
+        if attempt:
+            session.wait(attempt - 1)
+        if cancel is not None:
+            cancel.check()
+        try:
+            _stream(url, resource, part, session, meter, cancel, validators)
+            _verify(resource, part)
+        except IntegrityError as e:
+            part.unlink(missing_ok=True)
+            last = e
+            continue
+        except NetworkError as e:
+            return e
+        except requests.RequestException as e:
+            if not is_retryable(e):
+                return e
+            last = e
+            continue
+        return None
+    return last
 
 
 def download(
@@ -190,17 +213,19 @@ def download(
     """
     items = [resources] if isinstance(resources, Resource) else list(resources)
     unique = list({resource.path: resource for resource in items}.values())
-    if session is None:
-        with Session() as owned:
-            return download(
-                unique,
-                session=owned,
-                max_workers=max_workers,
-                progress=progress,
-                cancel=cancel,
-                task=task,
-            )
+    with session_scope(session) as client:
+        _download_all(unique, client, max_workers, progress, cancel, task)
 
+
+def _download_all(
+    unique: list[Resource],
+    session: Session,
+    max_workers: int,
+    progress: ProgressCallback | None,
+    cancel: CancelToken | None,
+    task: str,
+) -> None:
+    """Download resources with distinct paths in parallel. See `download`."""
     sizes = [resource.size for resource in unique]
     by_bytes = bool(unique) and all(size is not None for size in sizes)
     total_bytes = sum(size or 0 for size in sizes)

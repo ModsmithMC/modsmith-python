@@ -5,14 +5,8 @@ from dataclasses import dataclass, field
 
 from ..errors import UnsupportedError
 from ..packs import FileRef, PackEntry, safe_relative
-from ..platforms import (
-    PROJECT_FOLDERS,
-    Platform,
-    Project,
-    Release,
-    Resolution,
-    resolve_dependencies,
-)
+from ..platforms import Platform, Project, Release, Resolution, resolve_dependencies
+from ..platforms._base import PROJECT_FOLDERS, folder_kind
 from ..progress import CancelToken
 from ._state import Addition, Changes, InstanceState
 
@@ -95,12 +89,13 @@ def to_addition(
         PlatformError: The release has no files.
         PackError: The file name is unsafe.
     """
-    folder = project.folder
-    if folder is None:
+    kind = folder_kind(project.project_type)
+    if kind is None:
         raise UnsupportedError(
             f"{project.name} is a {project.project_type}, "
             "which cannot be added to an instance"
         )
+    folder = PROJECT_FOLDERS[kind]
     file = release.primary_file
     entry = PackEntry(
         path=path or safe_relative(f"{folder}/{file.name}"),
@@ -114,7 +109,7 @@ def to_addition(
         entry,
         project.name,
         project.slug,
-        project.project_type,
+        kind,
         requested=requested,
         requires=requires,
         pinned=pinned,

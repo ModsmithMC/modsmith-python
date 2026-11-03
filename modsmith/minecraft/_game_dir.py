@@ -99,7 +99,7 @@ class GameDir:
     """
 
     def __init__(self, path: Path | str) -> None:
-        self.path = Path(path).resolve()
+        self.path: Path = Path(path).resolve()
 
     @classmethod
     def default(cls) -> "GameDir":

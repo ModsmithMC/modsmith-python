@@ -1,6 +1,8 @@
 """Keep the package's layers and boundaries from drifting."""
 
 import ast
+import importlib
+import inspect
 from pathlib import Path
 
 import modsmith
@@ -79,14 +81,25 @@ def test_modules_import_only_from_lower_layers():
     assert upward == []
 
 
-def test_packages_do_not_reach_into_each_other():
+def test_modules_do_not_import_private_names_from_each_other():
     private = [
-        f"{where} imports {'.'.join(parts)}: {', '.join(names)}"
-        for _, where, target, parts, names in _imports()
-        if target in PACKAGES
-        and (
-            any(part.startswith("_") for part in parts[1:])
-            or any(name.startswith("_") for name in names)
-        )
+        f"{where} imports {', '.join(names)} from {'.'.join(parts)}"
+        for _, where, _, parts, names in _imports()
+        if any(name.startswith("_") and name != "__version__" for name in names)
     ]
     assert private == []
+
+
+def test_package_namespaces_hold_only_public_names():
+    # Anything imported into a package's __init__ shows up in editors.
+    leaked = []
+    for package in sorted(PACKAGES):
+        module = importlib.import_module(f"modsmith.{package}")
+        public = set(module.__all__)
+        for name, value in vars(module).items():
+            if name.startswith("_") or name in public:
+                continue
+            if inspect.ismodule(value) and value.__name__.startswith(module.__name__):
+                continue
+            leaked.append(f"modsmith.{package}.{name}")
+    assert leaked == []

@@ -13,7 +13,8 @@ from .._locks import GAME_LOCK, file_lock
 from .._paths import default_cache_dir
 from ..errors import JavaError, LoaderError, NetworkError, ProcessorError
 from ..minecraft import GameDir, install_version
-from ..net import Resource, Session, download, session_scope
+from ..net import Resource, Session, download
+from ..net._session import session_scope
 from ..progress import CancelToken, ProgressCallback
 from ._base import Loader, register
 from ._install_profile import InstallerJar, Library, Variables

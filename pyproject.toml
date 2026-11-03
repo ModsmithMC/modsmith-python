@@ -113,12 +113,15 @@ target-version = "py312"
 src = ["."]
 
 [tool.ruff.lint]
-select = ["B", "C4", "D", "E", "F", "I", "PT", "RUF", "SIM", "T20", "UP"]
+select = ["B", "C4", "C90", "D", "E", "F", "I", "PT", "PTH", "RUF", "SIM", "T20", "UP"]
 ignore = ["D105", "D107", "E501"]
 
 [tool.ruff.lint.per-file-ignores]
 "docs/conf.py" = ["D"]
 "tests/**" = ["D"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
 
 [tool.ruff.lint.isort]
 known-first-party = ["modsmith", "tests"]

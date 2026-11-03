@@ -15,10 +15,6 @@ from ._curseforge import CurseForge
 from ._modrinth import Modrinth
 from ._resolve import Conflict, MissingDependency, Resolution, resolve_dependencies
 
-# isort: split
-# Shared with other modsmith packages, but not part of the public API.
-from ._base import PROJECT_FOLDERS as PROJECT_FOLDERS
-
 __all__ = [
     "Conflict",
     "CurseForge",

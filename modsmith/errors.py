@@ -68,7 +68,7 @@ class DownloadError(ModsmithError):
 
     def __init__(self, message: str, failures: Sequence[str] = ()) -> None:
         super().__init__(message)
-        self.failures = list(failures)
+        self.failures: list[str] = list(failures)
 
 
 class IntegrityError(ModsmithError):
@@ -119,7 +119,7 @@ class UnresolvedEntriesError(InstanceError):
 
     def __init__(self, entries: "Sequence[PackEntry]") -> None:
         super().__init__(f"{len(entries)} pack entries have no download")
-        self.entries = list(entries)
+        self.entries: list[PackEntry] = list(entries)
 
 
 class DependencyError(InstanceError):

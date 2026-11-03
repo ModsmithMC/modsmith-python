@@ -15,7 +15,7 @@ MASK = 0xFFFFFFFF
 
 def _chunks(path: Path) -> Iterator[bytes]:
     """Yield a file's contents with the ignored bytes removed."""
-    with open(path, "rb") as file:
+    with path.open("rb") as file:
         while chunk := file.read(CHUNK_SIZE):
             yield chunk.translate(None, WHITESPACE)
 

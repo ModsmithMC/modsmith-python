@@ -7,7 +7,8 @@ from typing import Any, ClassVar, Literal
 
 from pydantic import BaseModel, Field
 
-from ..net import DEFAULT_USER_AGENT, Session, file_hash
+from ..net import Session, file_hash
+from ..net._session import DEFAULT_USER_AGENT
 from ..progress import CancelToken, ProgressCallback
 from ._base import (
     Dependency,
@@ -122,7 +123,7 @@ class Modrinth(Platform):
         owned = None if session else Session(user_agent or DEFAULT_USER_AGENT)
         super().__init__(session or owned)
         self._owns_session = session is None
-        self.base_url = base_url.rstrip("/")
+        self.base_url: str = base_url.rstrip("/")
 
     def _get(self, path: str, **params: Any) -> Any:
         """Send a GET request to the API."""

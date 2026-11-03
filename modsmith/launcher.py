@@ -147,7 +147,7 @@ class Launcher:
     """
 
     def __init__(self, game: GameDir | None = None) -> None:
-        self.game = game or GameDir.default()
+        self.game: GameDir = game or GameDir.default()
 
     def _profile_files(self) -> list[Path]:
         """List the launcher's profile files that exist.

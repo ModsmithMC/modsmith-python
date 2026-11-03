@@ -9,10 +9,11 @@ from pathlib import Path
 from .._fs import replace_file
 from .._locks import file_lock
 from ..errors import DependencyError, InstanceError
-from ..loaders import loader_name
+from ..loaders._base import loader_name
 from ..net import Session
 from ..packs import Modpack, Side, safe_relative
-from ..platforms import PROJECT_FOLDERS, Platform, Project, ProjectType, Release
+from ..platforms import Platform, Project, ProjectType, Release
+from ..platforms._base import PROJECT_FOLDERS
 from ..progress import CancelToken, ProgressCallback
 from ._apply import Applier, entry_targets, sync_targets
 from ._plan import Plan, build_plan, check_type, merge, newest, to_addition, unneeded
@@ -47,7 +48,7 @@ class Instance:
     """
 
     def __init__(self, path: Path | str) -> None:
-        self.path = Path(path)
+        self.path: Path = Path(path)
 
     @classmethod
     def create(
@@ -478,7 +479,7 @@ class Instance:
                 cancel.check()
             project = platform.get_project(
                 addition.project_id,
-                project_type=addition.project_type,  # type: ignore[arg-type]
+                project_type=addition.project_type,
             )
             projects[project.id] = project
             release = newest(platform, project, state, release_only)
@@ -662,7 +663,9 @@ class Instance:
         self._require_state()
         with file_lock(self._lock_path, wait=0):
             state = self._require_state()
-            kinds = {folder: kind for kind, folder in PROJECT_FOLDERS.items()}
+            kinds: dict[str, ProjectType] = {
+                folder: kind for kind, folder in PROJECT_FOLDERS.items()
+            }
             candidates = {
                 self.path / item.location: item
                 for item in self.contents()
@@ -679,7 +682,7 @@ class Instance:
                 taken.add((platform.name, release.project_id))
                 item = candidates[path]
                 kind = kinds[item.path.split("/", 1)[0]]
-                project = platform.get_project(release.project_id, project_type=kind)  # type: ignore[arg-type]
+                project = platform.get_project(release.project_id, project_type=kind)
                 needs = (
                     dependency.project_id
                     for dependency in release.dependencies

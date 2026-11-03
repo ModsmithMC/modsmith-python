@@ -14,10 +14,10 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Removed
 
 - `Instance.open`. Use `Instance(path)`.
-- `modsmith.java.platform_key`, `modsmith.java.official_runtime_dirs`, and
-  `InstallProfile`, `InstallerJar`, `Library` and `Processor` from
-  `modsmith.loaders` are no longer part of the public API. They still import,
-  but may change without notice.
+- `modsmith.java.platform_key` and `modsmith.java.official_runtime_dirs`
+  are no longer part of the public API.
+- `InstallProfile`, `InstallerJar`, `Library` and `Processor` are no longer
+  exported from `modsmith.loaders`.
 - `Launcher.profile_files`, `Profile.from_dict` and
   `ProcessorLoader.fetch_installer` are now private.
 

@@ -311,7 +311,7 @@ def test_file_in_use_puts_everything_back(session, instance, tmp_path):
         name="new.mrpack",
     )
 
-    with open(instance.path / "b", "rb"), pytest.raises(InstanceError):
+    with (instance.path / "b").open("rb"), pytest.raises(InstanceError):
         instance.sync(new, session=session)
 
     assert (instance.path / "a").read_text() == "v1"
