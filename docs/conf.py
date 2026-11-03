@@ -209,6 +209,7 @@ def add_section_navigation(app, pagename, templatename, context, doctree) -> Non
     """Give each page the sidebar of its own section."""
     section = pagename.split("/")[0]
     context["section"] = section
+    context["sections"] = SECTIONS
     context["section_title"] = SECTIONS.get(section, "")
     context["section_nav"] = ""
     if section in SECTIONS and "toctree" in context:

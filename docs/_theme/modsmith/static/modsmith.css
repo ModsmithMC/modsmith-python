@@ -209,7 +209,7 @@ svg {
   box-shadow: 0 2px 0 var(--accent);
 }
 
-.search {
+form.search {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -221,17 +221,17 @@ svg {
   color: var(--muted);
 }
 
-.search:focus-within {
+form.search:focus-within {
   border-color: var(--accent);
 }
 
-.search svg {
+form.search svg {
   flex: none;
   width: 16px;
   height: 16px;
 }
 
-.search input {
+form.search input {
   flex: 1;
   min-width: 0;
   border: 0;
@@ -242,7 +242,7 @@ svg {
   font-size: 14px;
 }
 
-.search kbd {
+form.search kbd {
   padding: 0 6px;
   border: 1px solid var(--border);
   font: 12px var(--mono);
@@ -396,6 +396,16 @@ svg path[d^="M8 0C3.58"] {
 .site-sidebar {
   min-height: calc(100vh - var(--header));
   border-right: 1px solid var(--border);
+}
+
+/* The menu on small screens needs these. Wider screens have the header links. */
+.site-sidebar.sections-only,
+.sidebar-sections {
+  display: none;
+}
+
+.site-body:has(.sections-only) {
+  display: block;
 }
 
 .site-sidebar ul,
@@ -1055,6 +1065,14 @@ div.admonition > p.admonition-title {
   font-style: normal;
 }
 
+/* Page titles and lists already show what a thing is, so signatures only keep
+   words that change how it is used, such as classmethod. */
+.content dl.py.class > dt > .property:first-child,
+.content dl.py.exception > dt > .property:first-child,
+.content dl.py.property > dt > .property:first-child {
+  display: none;
+}
+
 .content dl.field-list {
   display: grid;
   grid-template-columns: 96px minmax(0, 1fr);
@@ -1443,6 +1461,57 @@ ul.search {
   list-style: none;
 }
 
+/* Sphinx writes the search page's form, so style it by element. */
+.content form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.content form input {
+  height: 42px;
+  border-radius: 0;
+  font: inherit;
+}
+
+.content form input[type="text"] {
+  flex: 1;
+  min-width: 0;
+  padding: 0 12px 3px;
+  border: 1px solid var(--border);
+  outline: 0;
+  background: var(--surface);
+  box-shadow: inset 0 -3px 0 var(--shade);
+  color: var(--text);
+}
+
+.content form input[type="text"]:focus {
+  box-shadow: inset 0 -3px 0 var(--button-top);
+}
+
+.content form input[type="submit"] {
+  padding: 0 24px 3px;
+  border: 0;
+  background: var(--button);
+  box-shadow:
+    inset 0 2px 0 var(--button-top),
+    inset 0 -3px 0 var(--button-bottom);
+  color: #ffffff;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: capitalize;
+  cursor: pointer;
+}
+
+.content form input[type="submit"]:hover {
+  filter: brightness(1.12);
+}
+
+.content form input[type="submit"]:active {
+  transform: translateY(1px);
+}
+
 /* Small screens */
 
 @media (max-width: 1100px) {
@@ -1495,7 +1564,7 @@ ul.search {
   }
 
   .site-nav,
-  .search kbd,
+  form.search kbd,
   .version,
   .repo-text {
     display: none;
@@ -1505,7 +1574,7 @@ ul.search {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .search {
+  form.search {
     width: auto;
     min-width: 0;
     flex: 1;
@@ -1514,10 +1583,6 @@ ul.search {
 
   .menu-button {
     display: grid;
-  }
-
-  body.home .menu-button {
-    display: none;
   }
 
   .brand span {
@@ -1533,14 +1598,31 @@ ul.search {
     inset: var(--header) auto 0 0;
     z-index: 15;
     display: none;
+    align-self: stretch;
     width: min(280px, 85vw);
     min-height: 0;
     max-height: none;
+    padding: 20px;
     background: var(--bg);
+    box-shadow: 0 0 0 100vmax rgb(0 0 0 / 40%);
   }
 
   .site-sidebar.open {
     display: block;
+  }
+
+  body:has(.site-sidebar.open) {
+    overflow: hidden;
+  }
+
+  .sidebar-sections {
+    display: block;
+  }
+
+  .sidebar-sections:not(:last-child) {
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
   }
 
   .site-main {
@@ -1590,7 +1672,7 @@ ul.search {
 
 /* Blocks */
 
-.search,
+form.search,
 .pager a,
 .cards li,
 .loader,
@@ -1621,7 +1703,7 @@ div.highlight,
   box-shadow: inset 3px 0 0 var(--button-top);
 }
 
-.search:focus-within {
+form.search:focus-within {
   border-color: var(--border);
   box-shadow: inset 0 -3px 0 var(--button-top);
 }

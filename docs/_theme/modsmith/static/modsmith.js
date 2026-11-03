@@ -13,10 +13,28 @@
 
   const menu = document.querySelector("[data-menu]");
   const sidebar = document.querySelector("[data-sidebar]");
-  menu?.addEventListener("click", () => {
-    const open = sidebar?.classList.toggle("open") ?? false;
-    menu.setAttribute("aria-expanded", String(open));
-  });
+  const isOpen = () => sidebar?.classList.contains("open") ?? false;
+  const setOpen = (open) => {
+    sidebar?.classList.toggle("open", open);
+    menu?.setAttribute("aria-expanded", String(open));
+  };
+  menu?.addEventListener("click", () => setOpen(!isOpen()));
+  document.addEventListener(
+    "click",
+    (event) => {
+      if (!isOpen() || menu.contains(event.target)) return;
+      if (sidebar.contains(event.target)) {
+        if (event.target.closest("a")) setOpen(false);
+        return;
+      }
+      if (!event.target.closest(".site-header")) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      setOpen(false);
+    },
+    true,
+  );
 
   const search = document.querySelector("[data-search]");
   document.addEventListener("keydown", (event) => {
@@ -24,6 +42,10 @@
     if (event.key === "/" && !typing) {
       event.preventDefault();
       search?.focus();
+    }
+    if (event.key === "Escape" && isOpen()) {
+      setOpen(false);
+      menu.focus();
     }
   });
 

@@ -23,7 +23,7 @@
 
 {%- block header %}
 <header class="site-header">
-  <button class="icon-button menu-button" type="button" aria-label="Open navigation" aria-expanded="false" data-menu>
+  <button class="icon-button menu-button" type="button" aria-label="Open navigation" aria-controls="site-sidebar" aria-expanded="false" data-menu>
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
   </button>
   <a class="brand" href="{{ pathto(master_doc) }}">
@@ -32,7 +32,7 @@
   </a>
   <span class="version">v{{ release }}</span>
   <nav class="site-nav" aria-label="Main">
-    {%- for name, title in [('get-started', 'Get started'), ('guides', 'Guides'), ('concepts', 'Concepts'), ('reference', 'Reference'), ('help', 'Help')] %}
+    {%- for name, title in sections.items() %}
     <a {% if section == name %}class="active" aria-current="true" {% endif %}href="{{ pathto(name + '/index') }}">{{ title }}</a>
     {%- endfor %}
   </nav>
@@ -57,13 +57,18 @@
 
 {%- block content %}
 <div class="site-body">
-  {%- if section_nav %}
-  <aside class="site-sidebar" data-sidebar>
+  <aside class="site-sidebar{% if not section_nav %} sections-only{% endif %}" id="site-sidebar" data-sidebar>
+    <nav class="sidebar-sections" aria-label="Sections">
+      {%- for name, title in sections.items() %}
+      <a {% if section == name %}class="current" aria-current="true" {% endif %}href="{{ pathto(name + '/index') }}">{{ title }}</a>
+      {%- endfor %}
+    </nav>
+    {%- if section_nav %}
     <nav aria-label="Section">
       {{ section_nav }}
     </nav>
+    {%- endif %}
   </aside>
-  {%- endif %}
   <main class="site-main">
     <article class="content">
       {%- if parents %}
