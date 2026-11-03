@@ -116,11 +116,13 @@ def test_missing_project_is_reported():
     [missing] = result.missing
     assert missing.release == a
     assert missing.dependency.project_id == "gone"
+    assert missing.project is None
 
 
 def test_project_with_no_compatible_release_is_reported():
     a = release("a", "1", on("b"))
-    assert len(resolve(Catalog(a, release("b", game="1.20.1")), a).missing) == 1
+    [missing] = resolve(Catalog(a, release("b", game="1.20.1")), a).missing
+    assert missing.project.id == "b"
 
 
 def test_missing_exact_release_is_reported():
@@ -142,9 +144,19 @@ def test_optional_dependencies_are_opt_in():
 
 def test_pre_releases_are_left_out_unless_allowed():
     a = release("a", "1", on("b"))
-    catalog = Catalog(a, release("b", release_type="beta"))
-    assert len(resolve(catalog, a).missing) == 1
-    assert ids(resolve(catalog, a, release_only=False)) == ["b-1", "a-1"]
+    catalog = Catalog(a, release("b", "2", release_type="beta"), release("b", "1"))
+    assert ids(resolve(catalog, a)) == ["b-1", "a-1"]
+    assert ids(resolve(catalog, a, release_only=False)) == ["b-2", "a-1"]
+
+
+def test_a_dependency_with_only_pre_releases_gets_the_newest():
+    a = release("a", "1", on("b"))
+    catalog = Catalog(
+        a,
+        release("b", "2", release_type="beta"),
+        release("b", "1", release_type="alpha"),
+    )
+    assert ids(resolve(catalog, a)) == ["b-2", "a-1"]
 
 
 def test_installed_release_meets_a_dependency():
