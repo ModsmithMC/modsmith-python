@@ -1,6 +1,7 @@
 """Loaders installed by running processors: Forge and NeoForge."""
 
 import logging
+import re
 import tempfile
 import xml.etree.ElementTree as ElementTree
 from abc import abstractmethod
@@ -34,6 +35,8 @@ LEGACY_NEOFORGE = "1.20.1"
 FORGE_PROMOTIONS = (
     "https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json"
 )
+# Forge installers for older versions work differently and are not supported.
+FIRST_SUPPORTED = (1, 13)
 # Every NeoForge library is published under this Maven group.
 NEOFORGE_GROUP = "net.neoforged"
 
@@ -71,6 +74,12 @@ def neoforge_minecraft(version: str) -> str | None:
         return ".".join(game[:2] if game[2] == "0" else game)
     major, minor = numbers[0], numbers[1]
     return f"1.{major}" if minor == "0" else f"1.{major}.{minor}"
+
+
+def _before_1_13(minecraft: str) -> bool:
+    """Return whether a release such as ``1.12.2`` predates Minecraft 1.13."""
+    match = re.match(r"(\d+)\.(\d+)", minecraft)
+    return match is not None and (int(match[1]), int(match[2])) < FIRST_SUPPORTED
 
 
 @dataclass(frozen=True)
@@ -350,11 +359,14 @@ class Forge(ProcessorLoader):
             promotions_url: Where Forge lists its recommended versions.
 
         Returns:
-            The versions, empty if Forge has none for that Minecraft version.
+            The versions, empty if Forge has none for that Minecraft version,
+            or if it is older than 1.13, whose installers are not supported.
 
         Raises:
             NetworkError: The version list could not be fetched.
         """
+        if _before_1_13(minecraft):
+            return []
         base = (repository or cls.repository).rstrip("/")
         with session_scope(session) as client:
             names = maven_versions(
