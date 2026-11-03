@@ -79,15 +79,24 @@ from modsmith.platforms import Platform, Project, Release, SearchResults
 class MyPlatform(Platform):
     name = "myplatform"
 
-    def search(self, query, *, project_type="modpack", game_version=None,
-               loader=None, offset=0, limit=20) -> SearchResults:
+    def search(
+        self,
+        query,
+        *,
+        project_type="modpack",
+        game_version=None,
+        loader=None,
+        offset=0,
+        limit=20,
+    ) -> SearchResults:
         return SearchResults((), 0, offset)
 
     def get_project(self, ref, *, project_type="modpack") -> Project:
         return Project(self.name, str(ref), str(ref), str(ref))
 
-    def iter_releases(self, project, *, game_version=None, loader=None,
-                      release_only=False) -> Iterator[Release]:
+    def iter_releases(
+        self, project, *, game_version=None, loader=None, release_only=False
+    ) -> Iterator[Release]:
         yield from ()
 
 

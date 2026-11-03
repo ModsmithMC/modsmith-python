@@ -38,9 +38,7 @@ Pass the kind of project:
 
 ```python
 with ms.platforms.Modrinth("my-tool/1.0") as modrinth:
-    plan = instance.plan(
-        modrinth, ["complementary-reimagined"], project_type="shader"
-    )
+    plan = instance.plan(modrinth, ["complementary-reimagined"], project_type="shader")
     instance.add(plan)
 ```
 
@@ -94,6 +92,13 @@ instance.remove("iris")
 ```
 
 Dependencies that no other addition needs are removed too. Pass `keep_dependencies=True` to keep them. A file the player changed is kept and listed in `orphaned`.
+
+To show the player what will go before removing anything, pass `dry_run=True`. It returns the same `Changes` and leaves the instance as it is:
+
+```python
+preview = instance.remove("iris", dry_run=True)
+print("Would remove:", preview.removed)
+```
 
 Only additions can be removed. To stop the game loading a file from the pack, disable it.
 

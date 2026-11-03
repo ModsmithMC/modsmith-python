@@ -202,6 +202,28 @@ def test_remove_keeps_files_the_player_changed(server, session, instance):
     assert (instance.path / "mods" / "a-1.jar").read_bytes() == b"patched"
 
 
+def test_remove_dry_run_changes_nothing(server, session, instance):
+    catalog = Catalog(
+        published(server, "a", "1", on("lib")),
+        published(server, "b"),
+        published(server, "lib"),
+    )
+    instance.add(instance.plan(catalog, ["a", "b"]), session=session)
+    (instance.path / "mods" / "b-1.jar").write_bytes(b"patched")
+    before = instance.state
+
+    changes = instance.remove("a", "b", dry_run=True)
+
+    assert sorted(changes.removed) == ["mods/a-1.jar", "mods/lib-1.jar"]
+    assert changes.orphaned == ("mods/b-1.jar",)
+    assert instance.state == before
+    assert names(instance) == ["mods/a-1.jar", "mods/b-1.jar", "mods/lib-1.jar"]
+    kept = instance.remove("a", keep_dependencies=True, dry_run=True)
+    assert kept.removed == ("mods/a-1.jar",)
+    with pytest.raises(InstanceError):
+        instance.remove("nothing", dry_run=True)
+
+
 def test_remove_refuses_files_it_did_not_add(server, session, instance):
     with pytest.raises(InstanceError):
         instance.remove("mods/user.jar")
