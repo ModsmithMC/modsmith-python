@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <a href="https://modsmith.meneither.site/modsmith-python/">Documentation</a> · <strong>English</strong> · <a href="README_ZH.md">简体中文</a>
+  <a href="https://modsmithmc.org/modsmith-python/">Documentation</a> · <strong>English</strong> · <a href="README_ZH.md">简体中文</a>
 </p>
 
 ---

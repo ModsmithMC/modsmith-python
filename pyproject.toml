@@ -30,7 +30,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/ModsmithMC/modsmith-python"
-Documentation = "https://modsmith.meneither.site/modsmith-python/"
+Documentation = "https://modsmithmc.org/modsmith-python/"
 Issues = "https://github.com/ModsmithMC/modsmith-python/issues"
 Changelog = "https://github.com/ModsmithMC/modsmith-python/blob/main/CHANGELOG.md"
 
