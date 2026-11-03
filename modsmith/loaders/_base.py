@@ -4,13 +4,15 @@ import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import ClassVar
+from typing import Any, ClassVar, Self, cast
 
 from ..errors import UnsupportedError
-from ..minecraft import GameDir
+from ..minecraft import GameDir, Version
 from ..net import Session
 from ..progress import CancelToken, ProgressCallback
 
+# Inheritance deeper than this means the version files form a loop.
+MAX_INHERITANCE = 8
 # Words in a version that mark a pre-release, such as ``0.20.0-beta.9``.
 PRE_RELEASE = re.compile(r"(alpha|beta|pre|rc)", re.IGNORECASE)
 
@@ -24,6 +26,36 @@ def version_key(version: str) -> tuple[tuple[int, ...], bool, str]:
 def is_stable(version: str) -> bool:
     """Return whether a version's text marks it as a full release."""
     return not PRE_RELEASE.search(version)
+
+
+def library_versions(version: Version) -> dict[str, str]:
+    """Map each library a version JSON names, as ``group:artifact``, to its version."""
+    found: dict[str, str] = {}
+    libraries: list[Any] = version.raw.get("libraries") or []
+    for item in libraries:
+        name = (
+            cast(dict[str, Any], item).get("name") if isinstance(item, dict) else None
+        )
+        if not isinstance(name, str):
+            continue
+        parts = name.split(":")
+        if len(parts) >= 3:
+            found.setdefault(f"{parts[0]}:{parts[1]}", parts[2])
+    return found
+
+
+def game_argument(version: Version, flag: str) -> str | None:
+    """Return the value after a flag in a version JSON's game arguments."""
+    arguments: dict[str, Any] = version.raw.get("arguments") or {}
+    game: list[Any] = arguments.get("game") or []
+    words = [item for item in game if isinstance(item, str)]
+    legacy = version.raw.get("minecraftArguments")
+    if isinstance(legacy, str):
+        words.extend(legacy.split())
+    for index, word in enumerate(words[:-1]):
+        if word == flag:
+            return words[index + 1]
+    return None
 
 
 @dataclass(frozen=True)
@@ -115,6 +147,24 @@ class Loader(ABC):
             NetworkError: The loader's version list could not be fetched.
         """
         raise UnsupportedError(f"{cls.kind} cannot list its versions")
+
+    @classmethod
+    def from_version(cls, version: Version, minecraft: str) -> Self | None:
+        """Recognise this loader in an installed version JSON.
+
+        Override it so `detect` can find the loader in game directories.
+
+        Args:
+            version: One version JSON of an installed version, which may
+                inherit from others.
+            minecraft: The Minecraft version at the root of its inheritance.
+
+        Returns:
+            The loader, or None if the version JSON is not this loader's. That
+            is the default.
+        """
+        del version, minecraft
+        return None
 
     @abstractmethod
     def version_id(
@@ -312,3 +362,39 @@ def parse(loader_id: str, minecraft: str) -> Loader:
     if not version:
         raise UnsupportedError(f"Unsupported mod loader: {loader_id}")
     return create(kind, version, minecraft)
+
+
+def detect(game: GameDir, version_id: str) -> Loader | None:
+    """Find the mod loader an installed version starts, from its files alone.
+
+    The version JSON and those it inherits from are read, and each registered
+    loader is asked whether it recognises them. This works for versions the
+    official launcher or a loader's own installer set up, not only for
+    versions Modsmith installed.
+
+    Args:
+        game: The game directory.
+        version_id: The version, such as a launcher profile's ``version_id``.
+
+    Returns:
+        The loader, with the Minecraft version it runs on, or None if the
+        version starts no loader that is registered. For a vanilla version,
+        the version id is the Minecraft version.
+
+    Raises:
+        UnsupportedError: The version, or one it inherits from, is not
+            installed.
+    """
+    chain: list[Version] = []
+    current: str | None = version_id
+    while current is not None and len(chain) < MAX_INHERITANCE:
+        version = game.version(current)
+        chain.append(version)
+        current = version.inherits_from
+    minecraft = chain[-1].id
+    for version in chain:
+        for cls in _registry.values():
+            found = cls.from_version(version, minecraft)
+            if found is not None:
+                return found
+    return None

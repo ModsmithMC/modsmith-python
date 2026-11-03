@@ -29,6 +29,10 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   plain Minecraft, and returns the version id for a launcher profile.
 - `Instance.remove` takes `dry_run`, to show what a removal would take away,
   dependencies and kept player changes included, before doing it.
+- `modsmith.loaders.detect` finds the mod loader an installed version starts,
+  from its version JSON alone, so versions the official launcher or a loader's
+  installer set up can be recognised. Loaders that implement
+  `Loader.from_version` take part.
 
 ### Changed
 

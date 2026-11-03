@@ -65,6 +65,17 @@ if fabric.is_installed(game):
 
 `is_installed` reads local files, so it works offline. Installing a loader that is already there also returns straight away.
 
+## Find the loader of an installed version
+
+`detect` reads an installed version's JSON, and those it inherits from, and returns the loader it starts. It works for versions the official launcher or a loader's own installer set up, such as the version of a launcher profile:
+
+```python
+loader = ms.loaders.detect(game, "neoforge-21.1.233")
+print(loader.kind, loader.version, loader.minecraft)  # neoforge 21.1.233 1.21.1
+```
+
+It returns None for a vanilla version, whose id is the Minecraft version.
+
 ## Choose a game directory
 
 `GameDir.default` finds the official launcher's folder. To install somewhere else, give it a path:
