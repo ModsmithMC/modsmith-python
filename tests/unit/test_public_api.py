@@ -89,6 +89,7 @@ PUBLIC = {
         "ReleaseType",
         "Resolution",
         "SearchResults",
+        "SearchSort",
         "resolve_dependencies",
     },
     "progress": {"CancelToken", "Progress", "ProgressCallback", "report"},

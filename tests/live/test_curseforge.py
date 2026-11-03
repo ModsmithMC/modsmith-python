@@ -230,3 +230,27 @@ def test_releases_separate_game_versions_from_loaders(curseforge):
 def test_a_slug_is_found_whatever_kind_was_asked_for(curseforge):
     project = curseforge.get_project("faithful-32x", project_type="mod")
     assert project.project_type == "resourcepack"
+
+
+def test_search_sorts_and_reads_past_one_page(curseforge):
+    results = curseforge.search("", project_type="mod", sort="downloads", limit=60)
+    assert len(results.projects) == 60
+    # CurseForge sorts by a cached count, so neighbours can be slightly out of order.
+    counts = [item.downloads for item in results.projects]
+    assert counts[0] == max(counts)
+    assert sum(counts[:10]) > sum(counts[-10:])
+
+
+def test_search_results_describe_projects(curseforge):
+    project = curseforge.search("jei", project_type="mod", limit=1).projects[0]
+    assert project.author == "mezz"
+    assert project.updated
+    assert project.follows
+    assert project.categories
+    assert "1.20.1" in project.game_versions
+
+
+def test_bulk_lookup(curseforge):
+    found = curseforge.get_projects([str(JEI), "238223000", "not-a-number"])
+    assert set(found) == {str(JEI)}
+    assert found[str(JEI)].slug == "jei"

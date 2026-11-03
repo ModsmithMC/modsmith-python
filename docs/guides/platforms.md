@@ -38,6 +38,23 @@ for project in results.projects:
 
 `project_type` is one of `mod`, `modpack`, `resourcepack` or `shader`, and defaults to `modpack`. Use `offset` to read further pages.
 
+Choose the order with `sort`: `relevance`, `downloads`, `popularity`, `newest` or `updated`. Both platforms support all five. CurseForge has no relevance order, so there `relevance` lists the most popular matches first.
+
+```python
+popular = modrinth.search("minimap", project_type="mod", sort="downloads", limit=150)
+```
+
+`limit` can be larger than a platform serves at once, which is 100 on Modrinth and 50 on CurseForge: Modsmith reads as many pages as it takes. CurseForge stops after 10,000 results.
+
+Each result says who made it, its categories, when it last changed, how many people follow it, and which game releases it supports:
+
+```python
+for project in popular.projects[:3]:
+    print(project.name, project.author, project.updated[:10], project.game_versions[:3])
+```
+
+`author` is `None` for projects looked up with `get_project` on Modrinth, which does not say who made them there. `get_projects` looks up many projects at once, in as few requests as each platform allows.
+
 ## Look up a project
 
 `get_project` accepts an id, a slug or a project URL:

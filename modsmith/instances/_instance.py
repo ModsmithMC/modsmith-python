@@ -474,15 +474,19 @@ class Instance:
         roots: list[Release] = []
         projects: dict[str, Project] = {}
         unavailable: list[str] = []
-        for addition in state.additions:
-            if addition.platform != platform.name or addition.pinned:
-                continue
+        candidates = [
+            item
+            for item in state.additions
+            if item.platform == platform.name and not item.pinned
+        ]
+        looked_up = platform.get_projects(item.project_id for item in candidates)
+        for addition in candidates:
             if cancel is not None:
                 cancel.check()
-            project = platform.get_project(
-                addition.project_id,
-                project_type=addition.project_type,
-            )
+            project = looked_up.get(addition.project_id)
+            if project is None:
+                unavailable.append(addition.slug or addition.project_id)
+                continue
             projects[project.id] = project
             release = newest(platform, project, state, release_only)
             if release is None:
@@ -674,6 +678,9 @@ class Instance:
                 if item.source == "user" and (self.path / item.location).is_file()
             }
             found = platform.identify(candidates, progress=progress, cancel=cancel)
+            looked_up = platform.get_projects(
+                release.project_id for release in found.values()
+            )
             taken = {(item.platform, item.project_id) for item in state.additions}
             taken |= {(ref.platform, ref.project_id) for ref in state.pack_refs}
             cache = HashCache(self.path)
@@ -684,7 +691,9 @@ class Instance:
                 taken.add((platform.name, release.project_id))
                 item = candidates[path]
                 kind = kinds[item.path.split("/", 1)[0]]
-                project = platform.get_project(release.project_id, project_type=kind)
+                project = looked_up.get(release.project_id) or platform.get_project(
+                    release.project_id, project_type=kind
+                )
                 needs = (
                     dependency.project_id
                     for dependency in release.dependencies

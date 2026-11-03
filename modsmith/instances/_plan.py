@@ -175,6 +175,12 @@ def build_plan(
     owners.update({release.id: release.project_id for release in resolution.releases})
     kinds = {"required", "optional"} if include_optional else {"required"}
     additions: list[Addition] = []
+    missing = [
+        item.project_id
+        for item in resolution.releases
+        if item.project_id not in projects
+    ]
+    projects = {**projects, **platform.get_projects(missing)}
     for release in resolution.releases:
         if cancel is not None:
             cancel.check()

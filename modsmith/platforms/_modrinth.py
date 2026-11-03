@@ -18,13 +18,58 @@ from ._base import (
     Release,
     ReleaseFile,
     SearchResults,
+    SearchSort,
+    category_names,
+    collect_pages,
     digest_files,
     project_ref,
+    release_versions,
 )
 
 API_URL = "https://api.modrinth.com/v2"
 SITE_URL = "https://modrinth.com"
 PAGE_SIZE = 100
+SEARCH_PAGE = 100
+# Ids per bulk project lookup, to keep the address short.
+LOOKUP_BATCH = 100
+SORT_INDEXES = {
+    "relevance": "relevance",
+    "downloads": "downloads",
+    "popularity": "follows",
+    "newest": "newest",
+    "updated": "updated",
+}
+# Modrinth lists loaders among a search result's categories.
+LOADER_TAGS = frozenset(
+    {
+        "babric",
+        "bukkit",
+        "bungeecord",
+        "canvas",
+        "datapack",
+        "fabric",
+        "folia",
+        "forge",
+        "iris",
+        "legacy-fabric",
+        "liteloader",
+        "minecraft",
+        "modloader",
+        "neoforge",
+        "nilloader",
+        "optifine",
+        "ornithe",
+        "paper",
+        "purpur",
+        "quilt",
+        "rift",
+        "spigot",
+        "sponge",
+        "vanilla",
+        "velocity",
+        "waterfall",
+    }
+)
 # The most hashes to send in one request.
 BATCH_SIZE = 500
 
@@ -39,6 +84,30 @@ class _Hit(BaseModel):
     project_type: str = "modpack"
     icon_url: str | None = None
     downloads: int = 0
+    author: str | None = None
+    categories: list[str] = Field(default_factory=list[str])
+    date_modified: str = ""
+    follows: int | None = None
+    versions: list[str] = Field(default_factory=list[str])
+
+    def to_project(self, platform: str) -> Project:
+        """Convert this result to a `Project`."""
+        return Project(
+            platform=platform,
+            id=self.project_id,
+            slug=self.slug,
+            name=self.title,
+            summary=self.description,
+            project_type=self.project_type,
+            icon_url=self.icon_url,
+            url=_project_url(self.project_type, self.slug),
+            downloads=self.downloads,
+            author=self.author,
+            categories=category_names(self.categories, LOADER_TAGS),
+            updated=self.date_modified,
+            follows=self.follows,
+            game_versions=release_versions(self.versions),
+        )
 
 
 class _SearchResponse(BaseModel):
@@ -59,6 +128,29 @@ class _Project(BaseModel):
     project_type: str = "modpack"
     icon_url: str | None = None
     downloads: int = 0
+    categories: list[str] = Field(default_factory=list[str])
+    loaders: list[str] = Field(default_factory=list[str])
+    updated: str = ""
+    followers: int | None = None
+    game_versions: list[str] = Field(default_factory=list[str])
+
+    def to_project(self, platform: str) -> Project:
+        """Convert this project to a `Project`. Modrinth gives no author name here."""
+        return Project(
+            platform=platform,
+            id=self.id,
+            slug=self.slug,
+            name=self.title,
+            summary=self.description,
+            project_type=self.project_type,
+            icon_url=self.icon_url,
+            url=_project_url(self.project_type, self.slug),
+            downloads=self.downloads,
+            categories=category_names(self.categories, self.loaders),
+            updated=self.updated,
+            follows=self.followers,
+            game_versions=release_versions(self.game_versions),
+        )
 
 
 class _File(BaseModel):
@@ -136,21 +228,25 @@ class Modrinth(Platform):
         project_type: ProjectType = "modpack",
         game_version: str | None = None,
         loader: str | None = None,
+        sort: SearchSort = "relevance",
         offset: int = 0,
         limit: int = 20,
     ) -> SearchResults:
         """Search Modrinth's catalogue.
+
+        Modrinth serves 100 results a page; larger limits read several pages.
 
         Args:
             query: The search text.
             project_type: The kind of project to find.
             game_version: Only match this Minecraft version.
             loader: Only match this mod loader.
+            sort: How to order the results.
             offset: How many results to skip.
             limit: The maximum number of results to return.
 
         Returns:
-            One page of results.
+            The results.
 
         Raises:
             NetworkError: Modrinth could not be reached.
@@ -160,30 +256,21 @@ class Modrinth(Platform):
             facets.append([f"versions:{game_version}"])
         if loader:
             facets.append([f"categories:{loader}"])
-        data = _SearchResponse.model_validate(
-            self._get(
-                "/search",
-                query=query,
-                facets=json.dumps(facets),
-                offset=offset,
-                limit=limit,
+
+        def page(start: int, size: int) -> tuple[list[Project], int]:
+            data = _SearchResponse.model_validate(
+                self._get(
+                    "/search",
+                    query=query,
+                    facets=json.dumps(facets),
+                    index=SORT_INDEXES[sort],
+                    offset=start,
+                    limit=size,
+                )
             )
-        )
-        projects = tuple(
-            Project(
-                platform=self.name,
-                id=hit.project_id,
-                slug=hit.slug,
-                name=hit.title,
-                summary=hit.description,
-                project_type=hit.project_type,
-                icon_url=hit.icon_url,
-                url=_project_url(hit.project_type, hit.slug),
-                downloads=hit.downloads,
-            )
-            for hit in data.hits
-        )
-        return SearchResults(projects, data.total_hits, data.offset)
+            return [hit.to_project(self.name) for hit in data.hits], data.total_hits
+
+        return collect_pages(page, offset, limit, SEARCH_PAGE)
 
     def get_project(
         self, ref: str | int, *, project_type: ProjectType = "modpack"
@@ -201,17 +288,34 @@ class Modrinth(Platform):
             NetworkError: Modrinth could not be reached or does not know the project.
         """
         data = _Project.model_validate(self._get(f"/project/{project_ref(ref)}"))
-        return Project(
-            platform=self.name,
-            id=data.id,
-            slug=data.slug,
-            name=data.title,
-            summary=data.description,
-            project_type=data.project_type,
-            icon_url=data.icon_url,
-            url=_project_url(data.project_type, data.slug),
-            downloads=data.downloads,
-        )
+        return data.to_project(self.name)
+
+    def get_projects(
+        self, ids: Iterable[str], *, project_type: ProjectType = "mod"
+    ) -> dict[str, Project]:
+        """Look up several projects by id or slug, in as few requests as possible.
+
+        Args:
+            ids: The projects' ids or slugs.
+            project_type: Not used, because Modrinth's ids are unique across types.
+
+        Returns:
+            Each project Modrinth knows, keyed by the id or slug asked for.
+            Unknown ones are left out.
+
+        Raises:
+            NetworkError: Modrinth could not be reached.
+        """
+        wanted = list(dict.fromkeys(ids))
+        found: dict[str, Project] = {}
+        for start in range(0, len(wanted), LOOKUP_BATCH):
+            batch = wanted[start : start + LOOKUP_BATCH]
+            for item in self._get("/projects", ids=json.dumps(batch)):
+                project = _Project.model_validate(item).to_project(self.name)
+                for key in (project.id, project.slug):
+                    if key in batch:
+                        found[key] = project
+        return found
 
     def iter_releases(
         self,

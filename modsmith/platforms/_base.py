@@ -1,5 +1,6 @@
 """The data types and interface shared by every platform."""
 
+import re
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from dataclasses import dataclass, field
@@ -7,7 +8,7 @@ from pathlib import Path
 from types import TracebackType
 from typing import ClassVar, Literal, Self
 
-from ..errors import PlatformError, UnsupportedError
+from ..errors import NetworkError, PlatformError, UnsupportedError
 from ..loaders._base import LOADER_FALLBACKS
 from ..net import Resource, Session, download
 from ..packs import Modpack
@@ -16,6 +17,10 @@ from ..progress import CancelToken, ProgressCallback, report
 DependencyKind = Literal["required", "optional", "incompatible", "embedded"]
 ProjectType = Literal["mod", "modpack", "resourcepack", "shader"]
 ReleaseType = Literal["release", "beta", "alpha"]
+SearchSort = Literal["relevance", "downloads", "popularity", "newest", "updated"]
+# A release of the game such as 1.21.1 or 26.3, not a snapshot or a label.
+GAME_VERSION = re.compile(r"^\d+(\.\d+)+$")
+NOT_FOUND = 404
 # Where the game looks for each kind of project, relative to the game directory.
 PROJECT_FOLDERS: dict[ProjectType, str] = {
     "mod": "mods",
@@ -46,6 +51,14 @@ class Project:
         icon_url: The icon's URL, or None.
         url: The project's web page, or None.
         downloads: The number of downloads.
+        author: The author's name, or None if the platform did not say, as
+            Modrinth's project lookups do not.
+        categories: Its categories, as readable names such as ``Optimization``.
+        updated: When it last changed, in ISO 8601 format, or empty.
+        follows: How many people follow it, or None if unknown. CurseForge
+            calls these favourites.
+        game_versions: The game releases it supports, newest first. Snapshots
+            and pre-releases are left out.
     """
 
     platform: str
@@ -57,6 +70,11 @@ class Project:
     icon_url: str | None = None
     url: str | None = None
     downloads: int = 0
+    author: str | None = None
+    categories: tuple[str, ...] = ()
+    updated: str = ""
+    follows: int | None = None
+    game_versions: tuple[str, ...] = ()
 
     @property
     def folder(self) -> str | None:
@@ -162,6 +180,59 @@ class SearchResults:
     offset: int = 0
 
 
+def release_versions(labels: Iterable[str]) -> tuple[str, ...]:
+    """Keep the game releases among version labels, newest first, once each."""
+    found = {label for label in labels if GAME_VERSION.match(label)}
+    return tuple(
+        sorted(found, key=lambda item: tuple(map(int, item.split("."))), reverse=True)
+    )
+
+
+def category_names(
+    slugs: Iterable[str], leave_out: Iterable[str] = ()
+) -> tuple[str, ...]:
+    """Turn category slugs such as ``game-mechanics`` into ``Game Mechanics``."""
+    skipped = set(leave_out)
+    names = (slug.replace("-", " ").title() for slug in slugs if slug not in skipped)
+    return tuple(dict.fromkeys(names))
+
+
+def collect_pages(
+    fetch: Callable[[int, int], tuple[list[Project], int]],
+    offset: int,
+    limit: int,
+    page_size: int,
+    reachable: int | None = None,
+) -> SearchResults:
+    """Read as many pages of search results as ``limit`` needs.
+
+    Args:
+        fetch: Reads one page from an offset and a size, and returns its
+            projects and the total number of matches.
+        offset: How many results to skip.
+        limit: How many results to return in all.
+        page_size: The most the platform returns at once.
+        reachable: How deep the platform lets a search go, or None.
+
+    Returns:
+        The results.
+    """
+    projects: list[Project] = []
+    total = 0
+    while len(projects) < limit:
+        start = offset + len(projects)
+        size = min(page_size, limit - len(projects))
+        if reachable is not None:
+            size = min(size, reachable - start)
+        if size <= 0:
+            break
+        page, total = fetch(start, size)
+        projects.extend(page)
+        if len(page) < size:
+            break
+    return SearchResults(tuple(projects), total, offset)
+
+
 def project_ref(ref: str | int) -> str:
     """Reduce an id, slug or project URL to the id or slug."""
     return str(ref).rstrip("/").rsplit("/", 1)[-1]
@@ -228,6 +299,7 @@ class Platform(ABC):
         project_type: ProjectType = "modpack",
         game_version: str | None = None,
         loader: str | None = None,
+        sort: SearchSort = "relevance",
         offset: int = 0,
         limit: int = 20,
     ) -> SearchResults:
@@ -238,11 +310,14 @@ class Platform(ABC):
             project_type: The kind of project to find.
             game_version: Only match this Minecraft version.
             loader: Only match this mod loader.
+            sort: How to order the results. ``popularity`` means follows on
+                Modrinth and favourites on CurseForge.
             offset: How many results to skip.
-            limit: The maximum number of results to return.
+            limit: The maximum number of results to return. The built-in
+                platforms read as many pages as it takes.
 
         Returns:
-            One page of results.
+            The results.
 
         Raises:
             NetworkError: The platform could not be reached.
@@ -291,6 +366,39 @@ class Platform(ABC):
         Raises:
             NetworkError: The platform could not be reached.
         """
+
+    def get_projects(
+        self, ids: Iterable[str], *, project_type: ProjectType = "mod"
+    ) -> dict[str, Project]:
+        """Look up several projects by id at once.
+
+        The built-in platforms do this in as few requests as they can. By
+        default, each project is looked up on its own.
+
+        Args:
+            ids: The projects' ids.
+            project_type: The kind of project, for platforms whose lookups
+                need one.
+
+        Returns:
+            Each project the platform knows, keyed by the id it was asked for.
+            Unknown ids are left out.
+
+        Raises:
+            NetworkError: The platform could not be reached.
+        """
+        found: dict[str, Project] = {}
+        for project_id in dict.fromkeys(ids):
+            try:
+                found[project_id] = self.get_project(
+                    project_id, project_type=project_type
+                )
+            except PlatformError:
+                continue
+            except NetworkError as e:
+                if e.status != NOT_FOUND:
+                    raise
+        return found
 
     def get_release(self, release_id: str) -> Release:
         """Look up a release by id.
