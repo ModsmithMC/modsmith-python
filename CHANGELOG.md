@@ -53,6 +53,9 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- `loaders.versions("forge", ...)` lists nothing for Minecraft before 1.13,
+  since those installers are not supported, instead of versions that then fail
+  to install.
 - A dependency whose project has only alpha or beta releases, such as a new
   library mod, gets its newest one even with `release_only`, instead of making
   the release that needs it impossible to install. `MissingDependency.project`

@@ -1,6 +1,6 @@
 import pytest
 
-from modsmith.loaders import LoaderVersion
+from modsmith.loaders import Forge, LoaderVersion
 from modsmith.loaders._base import is_stable, recommend, version_key
 from modsmith.loaders._forge import neoforge_minecraft
 
@@ -47,3 +47,9 @@ def test_recommend_ignores_a_choice_that_is_not_listed():
 def test_recommend_marks_nothing_when_nothing_is_stable():
     found = recommend([LoaderVersion("x", "1-beta", "1.0", stable=False)])
     assert not found[0].recommended
+
+
+@pytest.mark.parametrize("minecraft", ["1.12.2", "1.7.10", "1.8"])
+def test_forge_offers_nothing_it_cannot_install(minecraft):
+    # Answered before any request, so it works with the network blocked.
+    assert Forge.available(minecraft) == []
