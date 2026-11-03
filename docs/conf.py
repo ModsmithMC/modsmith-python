@@ -40,7 +40,7 @@ html_theme_options = {
     "site_title": "Modsmith Python library",
     "sites": [
         ["Home", SITE, "What Modsmith is, and how to get it"],
-        ["Command line", SITE + "modsmith/", "Install modpacks, and every command"],
+        ["Command line", SITE + "modsmith-cli/", "Install modpacks, and every command"],
         ["Python library", html_baseurl, "Build your own tools"],
     ],
 }
