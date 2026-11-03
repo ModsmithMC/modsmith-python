@@ -132,7 +132,7 @@ launcher.add_profile(pack.name, version_id, instance.path)
 <div class="band center closing">
   <div class="band-inner">
     <h2>Start building</h2>
-    <p class="lede">Modsmith needs Python 3.12 or newer. Just want to play? <a href="https://modsmith.meneither.site/">Modsmith installs modpacks for you</a>.</p>
+    <p class="lede">Modsmith needs Python 3.12 or newer. Just want to play? <a href="https://modsmithmc.org/">Modsmith installs modpacks for you</a>.</p>
     <div class="actions">
       <a class="button primary" href="get-started/installation/">Get started</a>
     </div>
