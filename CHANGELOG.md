@@ -34,6 +34,13 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Packs that declare no mod loader can be read and installed. Before, they
   were rejected, although the formats allow them.
+- CurseForge searches return the most popular matches first. Before, they came
+  back in no useful order, so searching for `jei` did not find JEI.
+- CurseForge releases list only game versions in `game_versions`, and their
+  loaders in `loaders`, as Modrinth releases do. Before, `game_versions` also
+  held labels such as `Client` and `Fabric`, and `loaders` was empty.
+- `CurseForge.get_project` finds a slug even when it belongs to another kind of
+  project than the one asked for.
 
 ## [0.3.0] - 2026-11-03
 
