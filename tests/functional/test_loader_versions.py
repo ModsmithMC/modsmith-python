@@ -96,6 +96,23 @@ def test_forge_uses_its_own_recommendation(server, session):
     ]
 
 
+def test_forge_1_12_2_starts_at_the_current_installer_format(server, session):
+    server.add_body(
+        "/maven/net/minecraftforge/forge/maven-metadata.xml",
+        maven("1.12.2-14.23.5.2847", "1.12.2-14.23.5.2851", "1.12.2-14.23.5.2860"),
+    )
+    promotions = server.add_json(
+        "/promotions.json", {"promos": {"1.12.2-recommended": "14.23.5.2859"}}
+    )
+    found = Forge.available(
+        "1.12.2",
+        session=session,
+        repository=server.url("/maven"),
+        promotions_url=promotions,
+    )
+    assert [item.version for item in found] == ["14.23.5.2860", "14.23.5.2851"]
+
+
 def test_forge_without_a_recommendation_uses_the_newest(server, session):
     server.add_body(
         "/maven/net/minecraftforge/forge/maven-metadata.xml",

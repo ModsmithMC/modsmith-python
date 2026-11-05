@@ -35,8 +35,11 @@ LEGACY_NEOFORGE = "1.20.1"
 FORGE_PROMOTIONS = (
     "https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json"
 )
-# Forge installers for older versions work differently and are not supported.
+# Forge installers for older versions work differently and are not supported,
+# except for 1.12.2, whose installers use the current format from this build on.
 FIRST_SUPPORTED = (1, 13)
+LAST_LEGACY = "1.12.2"
+FIRST_CURRENT_BUILD = 2851
 # Every NeoForge library is published under this Maven group.
 NEOFORGE_GROUP = "net.neoforged"
 
@@ -82,6 +85,18 @@ def _before_1_13(minecraft: str) -> bool:
     return match is not None and (int(match[1]), int(match[2])) < FIRST_SUPPORTED
 
 
+def _installable(minecraft: str, version: str) -> bool:
+    """Return whether a Forge version's installer uses the current format."""
+    if not _before_1_13(minecraft):
+        return True
+    build = version.rsplit(".", 1)[-1]
+    return (
+        minecraft == LAST_LEGACY
+        and build.isdigit()
+        and int(build) >= FIRST_CURRENT_BUILD
+    )
+
+
 @dataclass(frozen=True)
 class ProcessorLoader(Loader):
     """A loader installed by patching Minecraft with processor jars.
@@ -116,7 +131,7 @@ class ProcessorLoader(Loader):
             DownloadError: The installer could not be downloaded.
             LoaderError: The installer is malformed.
             LockedError: Another process kept the download for too long.
-            UnsupportedError: The installer is older than Minecraft 1.13.
+            UnsupportedError: The installer uses the legacy format.
         """
         url = self.installer_url()
         dest = (cache_dir or default_cache_dir()) / "installers" / url.rsplit("/", 1)[1]
@@ -147,7 +162,7 @@ class ProcessorLoader(Loader):
         Raises:
             DownloadError: The installer could not be downloaded.
             LoaderError: The installer is malformed.
-            UnsupportedError: The installer is older than Minecraft 1.13.
+            UnsupportedError: The installer uses the legacy format.
         """
         return self._fetch_installer(session=session, cache_dir=cache_dir).version_id
 
@@ -329,7 +344,7 @@ class ProcessorLoader(Loader):
 @register
 @dataclass(frozen=True)
 class Forge(ProcessorLoader):
-    """The Forge loader, for Minecraft 1.13 and later.
+    """The Forge loader, for Minecraft 1.12.2 and later.
 
     Attributes:
         repository: The Maven repository that hosts the installers.
@@ -359,13 +374,14 @@ class Forge(ProcessorLoader):
             promotions_url: Where Forge lists its recommended versions.
 
         Returns:
-            The versions, empty if Forge has none for that Minecraft version,
-            or if it is older than 1.13, whose installers are not supported.
+            The versions, empty if Forge has none for that Minecraft version.
+            Versions whose installers use the legacy format, from before
+            1.12.2-14.23.5.2851, are left out.
 
         Raises:
             NetworkError: The version list could not be fetched.
         """
-        if _before_1_13(minecraft):
+        if _before_1_13(minecraft) and minecraft != LAST_LEGACY:
             return []
         base = (repository or cls.repository).rstrip("/")
         with session_scope(session) as client:
@@ -380,6 +396,7 @@ class Forge(ProcessorLoader):
             LoaderVersion(cls.kind, name.removeprefix(prefix), minecraft)
             for name in names
             if name.startswith(prefix)
+            and _installable(minecraft, name.removeprefix(prefix))
         ]
         return recommend(found, promotions.get(f"{minecraft}-recommended"))
 

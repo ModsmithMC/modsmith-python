@@ -132,10 +132,14 @@ class InstallProfile(BaseModel):
             The profile.
 
         Raises:
-            UnsupportedError: The profile is from before Minecraft 1.13.
+            UnsupportedError: The profile uses the legacy format, from before
+                Minecraft 1.12.2-14.23.5.2851.
         """
         if "spec" not in data:
-            raise UnsupportedError("Installers before Minecraft 1.13 are not supported")
+            raise UnsupportedError(
+                "Legacy Forge installers, from before 1.12.2-14.23.5.2851, "
+                "are not supported"
+            )
         return cls.model_validate(data)
 
     def client_processors(self) -> list[Processor]:
@@ -156,7 +160,7 @@ class InstallerJar:
 
     Raises:
         LoaderError: The installer is malformed.
-        UnsupportedError: The installer is older than Minecraft 1.13.
+        UnsupportedError: The installer uses the legacy format.
     """
 
     def __init__(self, path: Path) -> None:

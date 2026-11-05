@@ -6,6 +6,16 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- `Launcher.add_profile` with `memory_mb` keeps the garbage collector settings
+  the official launcher gives a new installation. Before, the profile's Java
+  arguments were replaced by `-Xmx` alone.
+- Forge for Minecraft 1.12.2 is supported from 14.23.5.2851, whose installers
+  use the current format, and `loaders.versions("forge", "1.12.2")` lists
+  those versions. Before, they were listed as unsupported although they
+  installed. Older installers still are not supported, and the error says so.
+
 ## [0.3.6] - 2026-11-04
 
 ### Changed

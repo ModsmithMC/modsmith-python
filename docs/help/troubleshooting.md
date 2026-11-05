@@ -30,9 +30,9 @@ Check that the profile's version is the loader's version id, such as `fabric-loa
 
 Mojang does not publish a version with that name. Check the spelling. `modsmith.minecraft.list_versions` shows what is available.
 
-### `Installers before Minecraft 1.13 are not supported`
+### `Legacy Forge installers ... are not supported`
 
-Modsmith installs Forge 1.13.2 and later. See [Compatibility](compatibility.md).
+Modsmith installs Forge for Minecraft 1.12.2 from build 14.23.5.2851, and for every later Minecraft version. Older Forge installers use a format Modsmith cannot read yet. See [Compatibility](compatibility.md).
 
 ### `Hash mismatch for ...`
 

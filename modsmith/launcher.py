@@ -21,6 +21,15 @@ __all__ = ["Launcher", "Profile", "icon_data_uri", "is_running"]
 PROFILE_FILES = ("launcher_profiles.json", "launcher_profiles_microsoft_store.json")
 BACKUP_SUFFIX = ".modsmith.bak"
 KEY_PREFIX = "modsmith-"
+# What the official launcher gives a new installation after its -Xmx2G.
+GC_FLAGS = (
+    "-XX:+UnlockExperimentalVMOptions",
+    "-XX:+UseG1GC",
+    "-XX:G1NewSizePercent=20",
+    "-XX:G1ReservePercent=20",
+    "-XX:MaxGCPauseMillis=50",
+    "-XX:G1HeapRegionSize=32M",
+)
 LAUNCHER_PROCESSES = frozenset(
     {
         "minecraft.exe",
@@ -216,7 +225,9 @@ class Launcher:
             version_id: The version to start.
             game_dir: The instance's directory. It is stored as an absolute path.
             key: The profile's key. Defaults to ``modsmith-`` and a slug of ``name``.
-            memory_mb: The maximum heap size. Ignored if ``java_args`` is set.
+            memory_mb: The maximum heap size, in MiB. The launcher's own
+                garbage collector settings are kept. Ignored if ``java_args``
+                is set.
             java_args: The JVM arguments.
             icon: The icon, such as a result of `icon_data_uri`.
 
@@ -236,7 +247,7 @@ class Launcher:
             "lastUsed": now,
         }
         if memory_mb is not None:
-            values["javaArgs"] = f"-Xmx{memory_mb}M"
+            values["javaArgs"] = " ".join((f"-Xmx{memory_mb}M", *GC_FLAGS))
         if java_args is not None:
             values["javaArgs"] = java_args
         if icon is not None:
