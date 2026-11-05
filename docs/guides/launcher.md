@@ -22,7 +22,7 @@ key = launcher.add_profile(
 )
 ```
 
-The arguments are the display name, the version to start and the instance folder. Modsmith stores the folder as an absolute path.
+The arguments are the display name, the version to start and the instance folder. Modsmith stores the folder as an absolute path. `memory_mb` sets how much memory the game may use, and keeps the launcher's other Java settings; pass `java_args` instead to set them all yourself.
 
 Calling it again with the same name updates the profile, and keeps any fields you did not set. Use the returned `key` to find the profile later.
 

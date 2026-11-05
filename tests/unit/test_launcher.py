@@ -58,7 +58,7 @@ def test_add_profile_preserves_other_data_and_backs_up(client, tmp_path):
     assert "整合包" in path.read_text(encoding="utf-8")
     profile = client.profiles()[key]
     assert profile.version_id == "1.21-forge"
-    assert profile.java_args == "-Xmx4096M"
+    assert profile.java_args == " ".join(("-Xmx4096M", *launcher.GC_FLAGS))
     assert profile.game_dir == str(tmp_path / "game")
     backup = path.with_name(path.name + launcher.BACKUP_SUFFIX)
     assert backup.read_text(encoding="utf-8") == original

@@ -15,7 +15,7 @@ Last verified against Minecraft 26.3, in November 2026.
 
 | Loader | Minecraft versions |
 | :--- | :--- |
-| Forge | 1.13.2 and later |
+| Forge | 1.12.2 (from 14.23.5.2851) and later |
 | NeoForge | 1.20.1 and later |
 | Fabric | 1.14 and later |
 | Quilt | 1.14.4 and later |

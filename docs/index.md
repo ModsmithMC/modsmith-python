@@ -88,9 +88,9 @@ launcher.add_profile(pack.name, version_id, instance.path)
   <div class="band-inner">
     <p class="eyebrow">Load</p>
     <h2>Every major mod loader</h2>
-    <p class="lede">One interface for all four, from Minecraft 1.13 to the latest release.</p>
+    <p class="lede">One interface for all four, from Minecraft 1.12.2 to the latest release.</p>
     <div class="loaders">
-      <div class="loader"><strong>Forge</strong><span>1.13.2 and later</span></div>
+      <div class="loader"><strong>Forge</strong><span>1.12.2 and later</span></div>
       <div class="loader"><strong>NeoForge</strong><span>1.20.1 and later</span></div>
       <div class="loader"><strong>Fabric</strong><span>1.14 and later</span></div>
       <div class="loader"><strong>Quilt</strong><span>1.14.4 and later</span></div>

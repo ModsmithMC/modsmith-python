@@ -49,7 +49,7 @@ def test_recommend_marks_nothing_when_nothing_is_stable():
     assert not found[0].recommended
 
 
-@pytest.mark.parametrize("minecraft", ["1.12.2", "1.7.10", "1.8"])
+@pytest.mark.parametrize("minecraft", ["1.12.1", "1.7.10", "1.8"])
 def test_forge_offers_nothing_it_cannot_install(minecraft):
     # Answered before any request, so it works with the network blocked.
     assert Forge.available(minecraft) == []

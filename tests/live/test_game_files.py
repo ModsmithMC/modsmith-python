@@ -5,6 +5,7 @@ import pytest
 import modsmith as ms
 
 FORGE_LIKE = [
+    ms.loaders.Forge("14.23.5.2860", "1.12.2"),
     ms.loaders.Forge("25.0.223", "1.13.2"),
     ms.loaders.Forge("36.2.42", "1.16.5"),
     ms.loaders.Forge("47.3.0", "1.20.1"),
